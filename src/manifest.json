@@ -3,7 +3,19 @@
   "name": "QR Scan — カメラ不要のQRコードリーダー",
   "version": "0.1.0",
   "description": "表示中のページまたは画像ファイルにあるQRコードを、カメラなしでローカル解析します。",
-  "permissions": ["activeTab"],
+  "permissions": ["activeTab", "alarms", "notifications", "storage"],
+  "host_permissions": ["https://qr.snkisk.com/*"],
+  "background": {
+    "service_worker": "handoff-background.js",
+    "type": "module"
+  },
+  "icons": {
+    "128": "icon-128.png"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
   "action": {
     "default_popup": "popup.html",
     "default_title": "QR Scan"

@@ -246,11 +246,13 @@ export default {
     }
 
     if (request.method === "POST" && url.pathname === "/api/v1/pairs") {
-      const body = await request.json<Record<string, unknown>>().catch(() => ({}));
+      const body = await request.json<Record<string, unknown>>().catch((): Record<string, unknown> => ({}));
+      const extensionReceiver = isExtensionPairRequest(request, body);
+      if (body.receiver === "extension" && !extensionReceiver) return withCors(json({ error: "extension_origin_required" }, 403), request);
       for (let attempt = 0; attempt < 3; attempt += 1) {
         const code = createPairCode();
         const response = await pairStub(env, code).fetch("https://pair.internal/create", jsonRequest({ ...body, code }));
-        if (response.status !== 409) return withPairCookie(response, request, code);
+        if (response.status !== 409) return extensionReceiver ? withCors(response, request) : withPairCookie(response, request, code);
       }
       return withCors(json({ error: "try_again" }, 503), request);
     }
@@ -323,7 +325,13 @@ function bearerToken(request: Request) { return request.headers.get("authorizati
 function json(data: unknown, status = 200) { return Response.json(data, { status, headers: JSON_HEADERS }); }
 function jsonRequest(data: unknown) { return new Request("https://pair.internal", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(data) }); }
 function publicEvent(event: HandoffEvent) { const url = isSafeOpenUrl(event.data); return { id: event.id, data: event.data, host: url?.host ?? null, createdAt: event.createdAt, expiresAt: event.expiresAt }; }
-function corsHeaders(request: Request): Record<string, string> { const origin = request.headers.get("origin"); return origin === "https://qr.snkisk.com" || origin?.startsWith("http://localhost:") ? { "access-control-allow-origin": origin, "access-control-allow-headers": "authorization, content-type, x-qr-role", "access-control-allow-methods": "GET, POST, OPTIONS", "vary": "Origin" } : {}; }
+function isExtensionPairRequest(request: Request, body: Record<string, unknown>) { return body.receiver === "extension" && request.headers.get("origin")?.startsWith("chrome-extension://") === true; }
+function corsHeaders(request: Request): Record<string, string> {
+  const origin = request.headers.get("origin");
+  return origin === "https://qr.snkisk.com" || origin?.startsWith("http://localhost:") || origin?.startsWith("chrome-extension://")
+    ? { "access-control-allow-origin": origin, "access-control-allow-headers": "authorization, content-type, x-qr-role", "access-control-allow-methods": "GET, POST, OPTIONS", "vary": "Origin" }
+    : {};
+}
 function withCors(response: Response, request: Request) {
   const headers = new Headers(response.headers);
   for (const [key, value] of Object.entries(corsHeaders(request))) headers.set(key, value);

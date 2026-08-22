@@ -90,4 +90,23 @@ describe('handoff Worker integration', () => {
     const claimed = await api(`/api/v1/pairs/${pair.code}/claim`, { method: 'POST', body: JSON.stringify({ label: 'Late Phone' }), headers: { 'content-type': 'application/json' } });
     expect(claimed.status).toBe(410);
   });
+
+  it('returns an extension-owned receiver token only to a Chrome extension origin', async () => {
+    const denied = await api('/api/v1/pairs', { method: 'POST', body: JSON.stringify({ receiver: 'extension' }), headers: { 'content-type': 'application/json', origin: 'https://example.com' } });
+    expect(denied.status).toBe(403);
+
+    const created = await api('/api/v1/pairs', { method: 'POST', body: JSON.stringify({ receiver: 'extension', label: 'Chrome extension' }), headers: { 'content-type': 'application/json', origin: 'chrome-extension://test-extension' } });
+    expect(created.headers.get('set-cookie')).toBeNull();
+    const extension = await created.json<{ code: string; token: string; receiverId: string }>();
+    expect(extension.token).toMatch(/^[-_A-Za-z0-9]+$/);
+
+    const claimed = await api(`/api/v1/pairs/${extension.code}/claim`, { method: 'POST', body: JSON.stringify({ label: 'Phone' }), headers: { 'content-type': 'application/json' } });
+    const mobile = await claimed.json<{ token: string; receiverId: string }>();
+    await api(`/api/v1/pairs/${extension.code}/confirm`, { method: 'POST', body: JSON.stringify({ role: 'web', token: extension.token }), headers: { 'content-type': 'application/json' } });
+    await api(`/api/v1/pairs/${extension.code}/confirm`, { method: 'POST', body: JSON.stringify({ role: 'mobile', token: mobile.token }), headers: { 'content-type': 'application/json' } });
+    const sent = await api('/api/v1/handoffs', { method: 'POST', body: JSON.stringify({ receiverId: mobile.receiverId, data: 'https://example.com/extension' }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
+    expect(sent.status).toBe(201);
+    const inbox = await api(`/api/v1/pairs/${extension.code}/events?receiver=${extension.receiverId}`, { headers: { authorization: `Bearer ${extension.token}` } });
+    await expect(inbox.json()).resolves.toMatchObject({ events: [{ data: 'https://example.com/extension' }] });
+  });
 });
