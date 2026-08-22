@@ -14,6 +14,7 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: '#F7FAFF' },
         }}>
         <Stack.Screen name="index" options={{ title: 'QR Scan' }} />
+        <Stack.Screen name="pair" options={{ title: 'PCと連携' }} />
       </Stack>
     </>
   );

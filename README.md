@@ -20,3 +20,11 @@ Chromeの `chrome://extensions` でデベロッパーモードを有効にし、
 ## プライバシー
 
 カメラにはアクセスしません。「このページをスキャン」は、ユーザー操作後にアクティブタブの可視領域だけを一時キャプチャして端末内で解析します。画像を含むデータは送信・保存しません。
+
+## プロジェクト構成
+
+- `src/`: Chrome上のQRコードをカメラなしで読むManifest V3拡張
+- `apps/mobile/`: iOS／Android共通のQR・バーコードスキャナー。PC連携のコード入力と安全な送信機能を含む
+- `apps/handoff/`: `qr-handoff` Cloudflare Worker、D1、Durable Object、PCのWeb受信箱
+
+`apps/handoff`はローカル検証済みですが、Cloudflareへのデプロイ、Workers Builds接続、`qr.snkisk.com`のCustom Domain設定、VAPIDによるバックグラウンドWeb Pushはまだ行っていません。

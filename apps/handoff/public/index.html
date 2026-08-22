@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>QR Scan — 受信箱</title>
+    <link rel="stylesheet" href="/app.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="rail" aria-label="メインメニュー">
+        <a class="brand" href="/" aria-label="QR Scan ホーム"><span class="brand-mark" aria-hidden="true">⌘</span><span>QR Scan</span></a>
+        <nav>
+          <button class="nav-item active" type="button" data-view="inbox">受信箱</button>
+          <button class="nav-item" type="button" data-view="devices">デバイス</button>
+          <button class="nav-item" type="button" data-view="settings">設定</button>
+        </nav>
+        <p class="rail-note">スマホで読み取った内容を、このPCで安全に開けます。</p>
+      </aside>
+
+      <main class="main-content">
+        <section class="view" id="inbox-view" aria-labelledby="inbox-title">
+          <div class="page-heading">
+            <div><h1 id="inbox-title">受信箱</h1><p id="inbox-description">スマホから届いたQRコード・バーコードの内容です。</p></div>
+            <button id="notification-button" class="quiet-button" type="button">通知を許可</button>
+          </div>
+
+          <section id="unpaired-panel" class="pair-start" aria-labelledby="pair-start-title">
+            <div class="pair-symbol" aria-hidden="true">⌁</div>
+            <div><h2 id="pair-start-title">スマホと連携する</h2><p>5分間だけ有効なコードをスマホアプリで入力し、両方の画面で確認してから連携します。</p></div>
+            <button id="start-pairing" class="primary-button" type="button">連携コードを表示</button>
+          </section>
+
+          <section id="pairing-panel" class="pair-panel" hidden aria-labelledby="pairing-title">
+            <p class="section-label">スマホで入力するコード</p>
+            <h2 id="pairing-title" class="pair-code" aria-live="polite">--------</h2>
+            <p class="pair-expiry" id="pair-expiry">有効期限を確認しています…</p>
+            <div class="confirmation"><span>確認フレーズ</span><strong id="pair-phrase">---</strong><p id="pair-status">スマホアプリでコードを入力してください。</p></div>
+            <button id="confirm-web" class="primary-button" type="button" disabled>このPCで確認する</button>
+            <button id="restart-pairing" class="text-button" type="button">別のコードを作る</button>
+          </section>
+
+          <section id="inbox-panel" hidden aria-live="polite">
+            <div class="section-row"><h2>最近の受信</h2><span id="connection-state" class="connection-state">接続を確認中</span></div>
+            <ol id="event-list" class="event-list"></ol>
+            <div id="empty-inbox" class="empty-state"><span aria-hidden="true">↓</span><h2>新しい受信はここに表示されます</h2><p>スマホでQRコードやバーコードを読み取ると、ここに届きます。</p></div>
+          </section>
+        </section>
+
+        <section class="view" id="devices-view" hidden aria-labelledby="devices-title"><h1 id="devices-title">デバイス</h1><div id="device-details" class="detail-panel">連携すると、ここにスマホの名前が表示されます。</div></section>
+        <section class="view" id="settings-view" hidden aria-labelledby="settings-title"><h1 id="settings-title">設定</h1><div class="detail-panel"><h2>安全について</h2><p>リンクは自動で開きません。読み取った内容は未読のまま10分で消えます。</p><button id="disconnect-web" class="text-button" type="button">このPCとの連携を解除</button></div></section>
+      </main>
+    </div>
+    <template id="event-template"><li class="event"><div class="event-icon" aria-hidden="true">↗</div><div class="event-body"><strong class="event-host"></strong><code class="event-value"></code><time class="event-time"></time></div><div class="event-actions"><button class="copy-event quiet-button" type="button">コピー</button><button class="open-event primary-button" type="button">リンクを開く</button></div></li></template>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
