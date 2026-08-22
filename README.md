@@ -29,4 +29,4 @@ Chromeの `chrome://extensions` でデベロッパーモードを有効にし、
 
 Chrome拡張は「拡張機能のオプション」からスマホとの連携コードを作成できます。連携後は、拡張の受信箱とOS通知に読み取り結果が届きます。通知をクリックしてもリンクは開かず、受信箱で表示内容を確認してから開く仕様です。
 
-`apps/handoff`はローカル検証済みですが、Cloudflareへのデプロイ、Workers Builds接続、`qr.snkisk.com`のCustom Domain設定、VAPIDによるバックグラウンドWeb Pushはまだ行っていません。
+`apps/handoff`はローカル検証済みです。Workerは`qr.snkisk.com`のCustom Domainだけで公開し、`workers.dev`とPreview URLは設定ファイルで無効化します。VAPIDによるバックグラウンドWeb Pushはまだ行っていません。
