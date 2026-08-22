@@ -1,0 +1,20 @@
+{
+  "name": "qrcodeextension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Camera-free QR code scanner Chrome extension",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test test/**/*.test.mjs",
+    "check": "npm run build && npm test"
+  },
+  "dependencies": {
+    "jsqr": "^1.4.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "pngjs": "^7.0.0",
+    "qrcode": "^1.5.4"
+  }
+}
