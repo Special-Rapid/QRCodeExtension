@@ -1,0 +1,5 @@
+# Create a key pair with: npm run vapid:generate
+# Never commit the corresponding .dev.vars file.
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:your-contact@example.com

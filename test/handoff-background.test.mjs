@@ -14,14 +14,9 @@ function createChrome() {
   return {
     values, notifications, tabs, messageEvent,
     chrome: {
-      runtime: { onInstalled: event(), onStartup: event(), onMessage: messageEvent, getURL: (path) => `chrome-extension://test/${path}` },
-      alarms: { onAlarm: event(), create() {} },
-      storage: { local: {
-        async get(keys) { if (typeof keys === "string") return { [keys]: values[keys] }; return Object.fromEntries(keys.map((key) => [key, values[key]])); },
-        async set(next) { Object.assign(values, next); },
-        async remove(keys) { for (const key of keys) delete values[key]; }
-      } },
-      notifications: { onClicked: event(), async create(id, options) { notifications.push({ id, options }); } },
+      runtime: { id: "abcdefghijklmnopabcdefghijklmnop", onInstalled: event(), onStartup: event(), onMessage: messageEvent, getURL: (path) => `chrome-extension://test/${path}` },
+      storage: { local: { async get(key) { return { [key]: values[key] }; }, async set(next) { Object.assign(values, next); }, async remove(key) { delete values[key]; } } },
+      notifications: { onClicked: event(), async create(id, options) { const existing = notifications.findIndex((notification) => notification.id === id); if (existing >= 0) notifications[existing] = { id, options }; else notifications.push({ id, options }); } },
       tabs: { async create(tab) { tabs.push(tab); } }
     }
   };
@@ -29,58 +24,89 @@ function createChrome() {
 
 function reply(status, body) { return { ok: status >= 200 && status < 300, status, async json() { return body; } }; }
 
-async function importBackground(environment, suffix) {
-  const previous = { chrome: globalThis.chrome, fetch: globalThis.fetch };
+async function importBackground(environment, suffix, workerScope) {
+  const previous = { chrome: globalThis.chrome, fetch: globalThis.fetch, self: globalThis.self };
   globalThis.chrome = environment.chrome;
   globalThis.fetch = environment.fetch;
+  if (workerScope) globalThis.self = workerScope; else delete globalThis.self;
   await import(new URL(`../src/handoff-background.js?background-test=${suffix}`, import.meta.url));
   return previous;
 }
 
-async function send(environment, message) {
-  return new Promise((resolve) => environment.messageEvent.emit(message, {}, resolve));
+function restoreBackground(previous) {
+  Object.assign(globalThis, previous);
+  if (previous.self === undefined) delete globalThis.self;
 }
 
-test("pairs an extension receiver, stores its token privately, and opens the inbox rather than a payload from a notification", async () => {
+async function send(environment, message) { return new Promise((resolve) => environment.messageEvent.emit(message, {}, resolve)); }
+
+test("claims a one-time website link as a private connector and opens the web inbox from notifications", async () => {
   const environment = createChrome();
-  const replies = [
-    reply(200, { code: "AB2CDE3F", receiverId: "web-1", token: "extension-secret", phrase: "あお・そら", expiresAt: 12345 }),
-    reply(200, { status: "paired" }),
-    reply(200, { status: "paired", receiverId: "web-1", phrase: "あお・そら", expiresAt: 12345, selfConfirmed: true, peerConfirmed: true, peerLabel: "Phone" }),
-    reply(200, { events: [{ id: "event-1", data: "https://example.com/from-phone", host: "example.com", createdAt: Date.now(), expiresAt: Date.now() + 60_000 }] })
-  ];
+  const replies = [reply(200, { publicKey: "AQID" }), reply(201, { connector: { id: "connector-1", token: "connector-secret", code: "AB2CDE3F" } }), reply(200, { status: "active" })];
   environment.fetch = async () => replies.shift();
-  const previous = await importBackground(environment, "pair");
+  const previousRegistration = globalThis.registration;
+  const previousWebSocket = globalThis.WebSocket;
+  globalThis.registration = { pushManager: { async getSubscription() { return null; }, async subscribe() { return { toJSON() { return { endpoint: "https://push.example.test/connector", keys: { p256dh: "key", auth: "auth" } }; } }; } } };
+  globalThis.WebSocket = class { static OPEN = 1; readyState = 1; constructor() {} addEventListener() {} send() {} close() {} };
+  const previous = await importBackground(environment, "connector");
   try {
-    const created = await send(environment, { type: "handoff.create", label: "Test Chrome" });
-    assert.equal(created.ok, true);
-    assert.equal(created.state.credential.token, undefined);
-    assert.equal(environment.values["handoff-extension-credential"].token, "extension-secret");
+    const response = await send(environment, { type: "connector.claim", token: "one-time", extensionId: environment.chrome.runtime.id });
+    assert.equal(response.ok, true);
+    assert.deepEqual(response.state.connector, { id: "connector-1", code: "AB2CDE3F" });
+    assert.equal(environment.values["qr-scan-connector"].token, "connector-secret");
 
-    const confirmed = await send(environment, { type: "handoff.confirm" });
-    assert.equal(confirmed.state.credential.status, "paired");
-    assert.equal(confirmed.state.events[0].data, "https://example.com/from-phone");
-    assert.equal(environment.notifications[0].id, "handoff:event-1");
-    assert.equal(environment.notifications[0].options.iconUrl, "chrome-extension://test/icon-128.png");
-
-    environment.chrome.notifications.onClicked.emit("handoff:event-1");
+    environment.chrome.notifications.onClicked.emit("qr-scan-handoff:event-1");
     await new Promise((resolve) => setTimeout(resolve, 0));
-    assert.equal(environment.tabs[0].url, "chrome-extension://test/options.html#event=event-1");
+    assert.equal(environment.tabs[0].url, "https://qr.snkisk.com/");
   } finally {
-    Object.assign(globalThis, previous);
+    restoreBackground(previous);
+    globalThis.registration = previousRegistration;
+    globalThis.WebSocket = previousWebSocket;
   }
 });
 
-test("clears a revoked extension credential instead of retaining a stale paired state", async () => {
+test("removes a revoked stored connector before opening another socket", async () => {
   const environment = createChrome();
-  environment.values["handoff-extension-credential"] = { code: "AB2CDE3F", receiverId: "web-1", token: "extension-secret", role: "web", status: "paired" };
-  environment.fetch = async () => reply(200, { status: "revoked", receiverId: "web-1", peerLabel: "Phone" });
+  environment.values["qr-scan-connector"] = { id: "connector-1", token: "expired-secret", code: "AB2CDE3F" };
+  environment.fetch = async () => reply(401, { error: "unauthorized" });
+  const previousWebSocket = globalThis.WebSocket;
+  let socketAttempts = 0;
+  globalThis.WebSocket = class {
+    static OPEN = 1;
+    constructor() { socketAttempts += 1; }
+    addEventListener() {}
+  };
   const previous = await importBackground(environment, "revoked");
   try {
-    const response = await send(environment, { type: "handoff.status" });
-    assert.equal(response.state.credential, null);
-    assert.equal(environment.values["handoff-extension-credential"], undefined);
+    environment.chrome.runtime.onStartup.emit();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(environment.values["qr-scan-connector"], undefined);
+    assert.equal(socketAttempts, 0);
   } finally {
-    Object.assign(globalThis, previous);
+    restoreBackground(previous);
+    globalThis.WebSocket = previousWebSocket;
+  }
+});
+
+test("deduplicates a redelivered extension Push by event id", async () => {
+  const environment = createChrome();
+  environment.fetch = async () => reply(200, { status: "active" });
+  const push = event();
+  const workerScope = { addEventListener(type, listener) { if (type === "push") push.addListener(listener); } };
+  const previous = await importBackground(environment, "push-dedupe", workerScope);
+  try {
+    const deliver = async () => {
+      let completed;
+      push.emit({ data: { json() { return { type: "handoff", eventId: "event-1" }; } }, waitUntil(promise) { completed = promise; } });
+      await completed;
+    };
+    await deliver();
+    await deliver();
+
+    assert.equal(environment.notifications.length, 1);
+    assert.equal(environment.notifications[0].id, "qr-scan-handoff:event-1");
+  } finally {
+    restoreBackground(previous);
   }
 });

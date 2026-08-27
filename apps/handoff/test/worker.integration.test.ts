@@ -4,11 +4,14 @@ import { beforeEach, describe, expect, it } from 'vitest';
 const schema = `
   CREATE TABLE IF NOT EXISTS receivers (id TEXT PRIMARY KEY, token_hash TEXT NOT NULL, kind TEXT NOT NULL, label TEXT NOT NULL, created_at INTEGER NOT NULL, revoked_at INTEGER);
   CREATE TABLE IF NOT EXISTS pairings (id TEXT PRIMARY KEY, web_receiver_id TEXT NOT NULL, mobile_receiver_id TEXT NOT NULL, created_at INTEGER NOT NULL, revoked_at INTEGER);
+  CREATE TABLE IF NOT EXISTS receiver_connectors (id TEXT PRIMARY KEY, receiver_id TEXT NOT NULL, token_hash TEXT NOT NULL, extension_id TEXT NOT NULL, label TEXT NOT NULL, created_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL, revoked_at INTEGER);
+  CREATE TABLE IF NOT EXISTS receiver_delivery_channels (id TEXT PRIMARY KEY, receiver_id TEXT NOT NULL, connector_id TEXT, kind TEXT NOT NULL, endpoint TEXT NOT NULL, p256dh TEXT NOT NULL, auth TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, revoked_at INTEGER);
+  CREATE TABLE IF NOT EXISTS connector_link_tokens (token_hash TEXT PRIMARY KEY, receiver_id TEXT NOT NULL, pairing_id TEXT NOT NULL, extension_id TEXT NOT NULL, expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL, used_at INTEGER);
 `;
 
 beforeEach(async () => {
   await env.DB.exec(schema);
-  await env.DB.exec('DELETE FROM pairings; DELETE FROM receivers;');
+  await env.DB.exec('DELETE FROM connector_link_tokens; DELETE FROM receiver_delivery_channels; DELETE FROM receiver_connectors; DELETE FROM pairings; DELETE FROM receivers;');
 });
 
 async function api(path: string, init: RequestInit = {}) {
@@ -91,22 +94,43 @@ describe('handoff Worker integration', () => {
     expect(claimed.status).toBe(410);
   });
 
-  it('returns an extension-owned receiver token only to a Chrome extension origin', async () => {
-    const denied = await api('/api/v1/pairs', { method: 'POST', body: JSON.stringify({ receiver: 'extension' }), headers: { 'content-type': 'application/json', origin: 'https://example.com' } });
-    expect(denied.status).toBe(403);
+  it('links a Chrome connector to an existing web receiver without a second mobile pairing', async () => {
+    const created = await api('/api/v1/pairs', { method: 'POST', body: JSON.stringify({ label: 'Web' }), headers: { 'content-type': 'application/json' } });
+    const web = await created.json<{ code: string }>();
+    const webCookie = created.headers.get('set-cookie');
+    const claimed = await api(`/api/v1/pairs/${web.code}/claim`, { method: 'POST', body: JSON.stringify({ label: 'Phone' }), headers: { 'content-type': 'application/json' } });
+    const mobile = await claimed.json<{ token: string }>();
+    await api(`/api/v1/pairs/${web.code}/confirm`, { method: 'POST', body: JSON.stringify({ role: 'web' }), headers: { 'content-type': 'application/json', cookie: webCookie! } });
+    await api(`/api/v1/pairs/${web.code}/confirm`, { method: 'POST', body: JSON.stringify({ role: 'mobile', token: mobile.token }), headers: { 'content-type': 'application/json' } });
 
-    const created = await api('/api/v1/pairs', { method: 'POST', body: JSON.stringify({ receiver: 'extension', label: 'Chrome extension' }), headers: { 'content-type': 'application/json', origin: 'chrome-extension://test-extension' } });
-    expect(created.headers.get('set-cookie')).toBeNull();
-    const extension = await created.json<{ code: string; token: string; receiverId: string }>();
-    expect(extension.token).toMatch(/^[-_A-Za-z0-9]+$/);
+    const extensionId = 'abcdefghijklmnopabcdefghijklmnop';
+    const linked = await api(`/api/v1/pairs/${web.code}/connector-link`, { method: 'POST', body: JSON.stringify({ extensionId }), headers: { 'content-type': 'application/json', cookie: webCookie! } });
+    const { token } = await linked.json<{ token: string }>();
+    const connectorClaim = await api('/api/v1/connector-links/claim', { method: 'POST', body: JSON.stringify({ token, extensionId, subscription: { endpoint: 'https://push.example.test/connector', keys: { p256dh: 'key', auth: 'auth' } } }), headers: { 'content-type': 'application/json', origin: `chrome-extension://${extensionId}` } });
+    expect(connectorClaim.status).toBe(201);
+    const connector = await connectorClaim.json<{ connector: { id: string; token: string; code: string } }>();
+    expect(connector.connector.code).toBe(web.code);
 
-    const claimed = await api(`/api/v1/pairs/${extension.code}/claim`, { method: 'POST', body: JSON.stringify({ label: 'Phone' }), headers: { 'content-type': 'application/json' } });
-    const mobile = await claimed.json<{ token: string; receiverId: string }>();
-    await api(`/api/v1/pairs/${extension.code}/confirm`, { method: 'POST', body: JSON.stringify({ role: 'web', token: extension.token }), headers: { 'content-type': 'application/json' } });
-    await api(`/api/v1/pairs/${extension.code}/confirm`, { method: 'POST', body: JSON.stringify({ role: 'mobile', token: mobile.token }), headers: { 'content-type': 'application/json' } });
-    const sent = await api('/api/v1/handoffs', { method: 'POST', body: JSON.stringify({ receiverId: mobile.receiverId, data: 'https://example.com/extension' }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
-    expect(sent.status).toBe(201);
-    const inbox = await api(`/api/v1/pairs/${extension.code}/events?receiver=${extension.receiverId}`, { headers: { authorization: `Bearer ${extension.token}` } });
-    await expect(inbox.json()).resolves.toMatchObject({ events: [{ data: 'https://example.com/extension' }] });
+    const status = await api(`/api/v1/pairs/${web.code}/connector-status`, { headers: { cookie: webCookie! } });
+    await expect(status.json()).resolves.toMatchObject({ connector: { id: connector.connector.id, extensionId } });
+    const health = await api(`/api/v1/pairs/${web.code}/connector-health?connector=${connector.connector.id}`, { headers: { authorization: `Bearer ${connector.connector.token}` } });
+    expect(health.status).toBe(200);
+    await expect(health.json()).resolves.toEqual({ status: 'active' });
+    const connectorSocket = await api(`/api/v1/pairs/${web.code}/connector-ws?connector=${connector.connector.id}`, { headers: { upgrade: 'websocket', 'sec-websocket-protocol': `qr-scan.${connector.connector.token}` } });
+    expect(connectorSocket.status).toBe(101);
+
+    const disconnected = await api(`/api/v1/pairs/${web.code}/connector-disconnect`, { method: 'POST', body: JSON.stringify({ extensionId }), headers: { 'content-type': 'application/json', cookie: webCookie! } });
+    expect(disconnected.status).toBe(200);
+    const afterDisconnect = await api(`/api/v1/pairs/${web.code}/connector-status`, { headers: { cookie: webCookie! } });
+    await expect(afterDisconnect.json()).resolves.toEqual({ connector: null });
+
+    const linkBeforeRevoke = await api(`/api/v1/pairs/${web.code}/connector-link`, { method: 'POST', body: JSON.stringify({ extensionId }), headers: { 'content-type': 'application/json', cookie: webCookie! } });
+    const revocable = await linkBeforeRevoke.json<{ token: string }>();
+    const revoked = await api(`/api/v1/pairs/${web.code}/revoke`, { method: 'POST', body: '{}', headers: { 'content-type': 'application/json', cookie: webCookie! } });
+    expect(revoked.status).toBe(200);
+    const rejectedAfterRevoke = await api('/api/v1/connector-links/claim', { method: 'POST', body: JSON.stringify({ token: revocable.token, extensionId, subscription: { endpoint: 'https://push.example.test/revoked', keys: { p256dh: 'key', auth: 'auth' } } }), headers: { 'content-type': 'application/json', origin: `chrome-extension://${extensionId}` } });
+    expect(rejectedAfterRevoke.status).toBe(410);
+    const oldExtensionPairing = await api('/api/v1/pairs', { method: 'POST', body: JSON.stringify({ receiver: 'extension' }), headers: { 'content-type': 'application/json', origin: `chrome-extension://${extensionId}` } });
+    expect(oldExtensionPairing.status).toBe(410);
   });
 });

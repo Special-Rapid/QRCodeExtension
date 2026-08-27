@@ -23,7 +23,7 @@
         <section class="view" id="inbox-view" aria-labelledby="inbox-title">
           <div class="page-heading">
             <div><h1 id="inbox-title">受信箱</h1><p id="inbox-description">スマホから届いたQRコード・バーコードの内容です。</p></div>
-            <button id="notification-button" class="quiet-button" type="button">通知を許可</button>
+            <button id="notification-button" class="quiet-button" type="button">Web通知を有効にする</button>
           </div>
 
           <section id="unpaired-panel" class="pair-start" aria-labelledby="pair-start-title">
@@ -48,7 +48,15 @@
           </section>
         </section>
 
-        <section class="view" id="devices-view" hidden aria-labelledby="devices-title"><h1 id="devices-title">デバイス</h1><div id="device-details" class="detail-panel">連携すると、ここにスマホの名前が表示されます。</div></section>
+        <section class="view" id="devices-view" hidden aria-labelledby="devices-title">
+          <h1 id="devices-title">このPC</h1>
+          <div id="device-details" class="detail-panel">連携すると、ここにスマホの名前が表示されます。</div>
+          <div id="connector-panel" class="detail-panel" hidden>
+            <h2>高速通知</h2>
+            <p id="connector-description">Chrome拡張を接続すると、このPCで最優先の通知受信に使います。受信箱や連携コードは増えません。</p>
+            <div class="detail-actions"><button id="connect-extension" class="primary-button" type="button" hidden>Chrome拡張を接続</button><button id="disconnect-extension" class="text-button" type="button" hidden>Chrome拡張を解除</button></div>
+          </div>
+        </section>
         <section class="view" id="settings-view" hidden aria-labelledby="settings-title"><h1 id="settings-title">設定</h1><div class="detail-panel"><h2>安全について</h2><p>リンクは自動で開きません。読み取った内容は未読のまま10分で消えます。</p><button id="disconnect-web" class="text-button" type="button">このPCとの連携を解除</button></div></section>
       </main>
     </div>

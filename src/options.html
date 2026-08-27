@@ -3,17 +3,14 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>QR Scan — PC連携</title>
+    <title>QR Scan — Chrome接続</title>
     <link rel="stylesheet" href="options.css">
   </head>
   <body>
     <main class="shell">
-      <header><img src="icon-128.png" alt=""><div><p class="eyebrow">QR Scan</p><h1>PCと連携</h1></div></header>
-      <p class="intro">スマホで読み取った内容を、このChrome拡張の受信箱に届けます。リンクは自動で開きません。</p>
-
-      <section id="unpaired" class="card"><h2>スマホと連携する</h2><p>5分間だけ有効なコードを作成し、スマホアプリに入力してください。両方の画面で確認するまで連携は完了しません。</p><button id="create" class="primary" type="button">連携コードを表示</button></section>
-      <section id="pending" class="card" hidden><p class="eyebrow">スマホで入力するコード</p><output id="code" class="code">--------</output><p id="expires" class="muted"></p><div class="phrase"><span>確認フレーズ</span><strong id="phrase">---</strong></div><p id="status" class="status">スマホアプリでコードを入力してください。</p><button id="confirm" class="primary" type="button" disabled>このPCで確認する</button><button id="restart" class="text-button" type="button">別のコードを作る</button></section>
-      <section id="inbox" class="card" hidden><div class="heading"><div><p class="eyebrow">接続済み</p><h2>受信箱</h2></div><button id="refresh" class="secondary" type="button">更新</button></div><p id="device" class="muted"></p><ol id="events" class="events"></ol><p id="empty" class="empty">新しい読み取り結果はここに表示されます。</p><button id="revoke" class="danger" type="button">このPCとの連携を解除</button></section>
+      <header><img src="icon-128.png" alt=""><div><p class="eyebrow">QR Scan</p><h1>Chrome接続</h1></div></header>
+      <p class="intro">この拡張はページ上のQRをカメラなしで読み取り、必要なときはWeb受信箱への高速通知も担当します。</p>
+      <section class="card"><h2>受信箱はひとつです</h2><p id="status" class="muted">状態を確認しています…</p><button id="open-inbox" class="primary" type="button">QR Scan の受信箱を開く</button></section>
     </main>
     <script type="module" src="options.js"></script>
   </body>

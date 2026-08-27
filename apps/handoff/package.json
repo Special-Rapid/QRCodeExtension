@@ -8,14 +8,19 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run test",
+    "vapid:generate": "web-push generate-vapid-keys",
     "db:migrate:production": "wrangler d1 migrations apply DB --remote",
     "deploy:production": "npm run db:migrate:production && wrangler deploy"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "^1.0.0",
     "@cloudflare/workers-types": "^5.20260822.1",
+    "@types/web-push": "^3.6.4",
     "typescript": "^5.9.3",
     "vitest": "^4.1.11",
     "wrangler": "^4.125.0"
+  },
+  "dependencies": {
+    "web-push": "^3.6.7"
   }
 }
