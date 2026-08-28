@@ -5,7 +5,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { type GestureResponderEvent, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getPairStatus, loadCredential, sendHandoff } from '../lib/handoff';
+import { getMobileDevices, loadMobileIdentity, sendHandoff } from '../lib/handoff';
 
 type ScanResult = { data: string; type: string };
 type DeliveryState = 'idle' | 'sending' | 'sent' | 'failed' | 'not_paired';
@@ -30,6 +30,8 @@ export default function ScannerScreen() {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [paired, setPaired] = useState(false);
   const [pairingReady, setPairingReady] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraSession, setCameraSession] = useState(0);
   const [delivery, setDelivery] = useState<DeliveryState>('idle');
   const [actionNotice, setActionNotice] = useState('');
   const scanLocked = useRef(false);
@@ -41,10 +43,10 @@ export default function ScannerScreen() {
     setPairingReady(false);
     void (async () => {
       try {
-        const credential = await loadCredential();
-        if (!credential) { if (active) setPaired(false); return; }
-        const current = await getPairStatus(credential);
-        if (active) setPaired(current.status === 'paired');
+        const identity = await loadMobileIdentity();
+        if (!identity) { if (active) setPaired(false); return; }
+        const { deviceCount } = await getMobileDevices(identity);
+        if (active) setPaired(deviceCount > 0);
       } catch { if (active) setPaired(false); }
       finally { if (active) setPairingReady(true); }
     })();
@@ -62,11 +64,22 @@ export default function ScannerScreen() {
   };
   const endPinch = (event: GestureResponderEvent) => { if (event.nativeEvent.touches.length < 2) pinch.current = null; };
 
-  const scanAgain = () => { scanLocked.current = false; setResult(null); setDelivery('idle'); setActionNotice(''); };
+  const scanAgain = () => {
+    scanLocked.current = true;
+    setCameraReady(false);
+    setResult(null);
+    setDelivery('idle');
+    setActionNotice('');
+    setCameraSession((value) => value + 1);
+  };
   const sendScannedValue = async (data: string) => {
     if (!paired) return setDelivery('not_paired');
     setDelivery('sending');
-    try { await sendHandoff(data); setDelivery('sent'); }
+    try {
+      const response = await sendHandoff(data) as { delivered: number };
+      setDelivery('sent');
+      setActionNotice(`${response.delivered}台のPCへ送信しました。`);
+    }
     catch (error) {
       if (error instanceof Error && ['unauthorized', 'not_paired'].includes((error as { code?: string }).code ?? '')) setPaired(false);
       setDelivery('failed');
@@ -103,7 +116,7 @@ export default function ScannerScreen() {
     onTouchMove={movePinch}
     onTouchEnd={endPinch}
     onTouchCancel={endPinch}>
-    <CameraView facing="back" enableTorch={torch} zoom={zoom} barcodeScannerSettings={{ barcodeTypes }} onBarcodeScanned={result || !pairingReady ? undefined : onBarcodeScanned} style={StyleSheet.absoluteFill} />
+    <CameraView key={cameraSession} facing="back" enableTorch={torch} zoom={zoom} barcodeScannerSettings={{ barcodeTypes }} onCameraReady={() => { setCameraReady(true); if (!result) scanLocked.current = false; }} onBarcodeScanned={result || !pairingReady || !cameraReady ? undefined : onBarcodeScanned} style={StyleSheet.absoluteFill} />
     <View pointerEvents="none" style={styles.cameraTint} />
     <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
       <View><Text style={styles.brand}>QR Scan</Text><Text style={styles.deliveryPill}>{result ? deliveryCopy : paired ? 'PCに自動送信' : 'PCと連携して使う'}</Text></View>
@@ -121,12 +134,12 @@ export default function ScannerScreen() {
       <View style={styles.zoomTrack}><View style={[styles.zoomThumb, { bottom: `${zoom * 100}%` }]} /></View>
       <Text selectable style={styles.currentZoom}>{zoomLabel(zoom)}</Text>
     </View>
-    {!result && <View style={[styles.scanHint, { paddingBottom: Math.max(insets.bottom, 16) }]}><Text style={styles.scanHintText}>{pairingReady ? '枠に合わせると、自動でPCへ届けます' : 'PC連携の状態を確認しています…'}</Text></View>}
+    {!result && <View style={[styles.scanHint, { paddingBottom: Math.max(insets.bottom, 16) }]}><Text style={styles.scanHintText}>{!pairingReady ? 'PC連携の状態を確認しています…' : !cameraReady ? 'カメラを再開しています…' : '枠に合わせると、自動でPCへ届けます'}</Text></View>}
     {result && <View style={[styles.resultOverlay, { paddingBottom: Math.max(insets.bottom, 16) }]}><View style={styles.resultCard}>
       <View style={styles.resultHeader}><View style={[styles.deliveryDot, delivery === 'sent' && styles.deliveryDotSent, delivery === 'failed' && styles.deliveryDotFailed]} /><Text selectable style={styles.deliveryText}>{deliveryCopy}</Text><Pressable style={styles.scanAgain} onPress={scanAgain}><Text style={styles.scanAgainText}>続けて</Text></Pressable></View>
       {url && <Text selectable numberOfLines={1} style={styles.host}>{url.host}</Text>}
       <Text selectable numberOfLines={2} style={styles.value}>{result.data}</Text>
-      {actionNotice ? <Text selectable numberOfLines={2} style={styles.actionNotice}>{actionNotice}</Text> : null}
+      {actionNotice ? <Text selectable numberOfLines={2} style={[styles.actionNotice, delivery === 'failed' && styles.actionNoticeError]}>{actionNotice}</Text> : null}
       <View style={styles.resultActions}>
         {url && <Pressable style={styles.openAction} onPress={openResult}><Text style={styles.openActionText}>開く</Text></Pressable>}
         <Pressable style={styles.copyAction} onPress={copyResult}><Text style={styles.copyActionText}>コピー</Text></Pressable>
@@ -147,5 +160,5 @@ const styles = StyleSheet.create({
   viewfinder: { position: 'absolute', top: '26%', left: '12%', right: '18%', bottom: '31%' }, corner: { position: 'absolute', width: 38, height: 38, borderColor: '#FFFFFF', borderRadius: 8, borderCurve: 'continuous' }, cornerTopLeft: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3 }, cornerTopRight: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3 }, cornerBottomLeft: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3 }, cornerBottomRight: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3 },
   zoomRail: { position: 'absolute', right: 16, alignItems: 'center', gap: 7, paddingVertical: 12, paddingHorizontal: 8, borderWidth: 1, borderColor: 'rgba(166, 199, 255, .25)', borderRadius: 22, backgroundColor: 'rgba(4, 18, 47, .72)' }, zoomPreset: { width: 38, minHeight: 28, alignItems: 'center', justifyContent: 'center' }, zoomPresetText: { color: '#B9CAE9', fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] }, zoomPresetTextActive: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' }, zoomTrack: { width: 2, height: 72, borderRadius: 2, backgroundColor: 'rgba(255, 255, 255, .36)', overflow: 'visible' }, zoomThumb: { position: 'absolute', left: -5, width: 12, height: 12, borderRadius: 6, backgroundColor: '#4C91FF', borderWidth: 2, borderColor: '#DCEBFF' }, currentZoom: { color: '#FFFFFF', fontSize: 12, fontWeight: '900', fontVariant: ['tabular-nums'] },
   scanHint: { position: 'absolute', left: 24, right: 90, bottom: 18, alignItems: 'flex-start' }, scanHintText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700', textShadowColor: 'rgba(0, 0, 0, .65)', textShadowRadius: 7 },
-  resultOverlay: { position: 'absolute', left: 16, right: 16, bottom: 0 }, resultCard: { gap: 9, padding: 15, borderWidth: 1, borderColor: 'rgba(185, 209, 255, .44)', borderRadius: 20, borderCurve: 'continuous', backgroundColor: 'rgba(5, 18, 46, .94)', boxShadow: '0 12px 32px rgba(0, 0, 0, .3)' }, resultHeader: { flexDirection: 'row', alignItems: 'center', gap: 7 }, deliveryDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#9AA9C1' }, deliveryDotSent: { backgroundColor: '#46D58E' }, deliveryDotFailed: { backgroundColor: '#FF7777' }, deliveryText: { flex: 1, color: '#C8D8F4', fontSize: 13, fontWeight: '800' }, scanAgain: { minHeight: 32, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center' }, scanAgainText: { color: '#8CB9FF', fontSize: 13, fontWeight: '800' }, host: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' }, value: { color: '#D4DEF1', fontSize: 13, lineHeight: 18, fontFamily: process.env.EXPO_OS === 'ios' ? 'Menlo' : 'monospace' }, actionNotice: { color: '#FFB0B0', fontSize: 12, lineHeight: 17 }, resultActions: { flexDirection: 'row', gap: 9, marginTop: 2 }, openAction: { flex: 1, minHeight: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderCurve: 'continuous', backgroundColor: '#2476F3' }, openActionText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' }, copyAction: { flex: 1, minHeight: 42, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#789ED6', borderRadius: 12, borderCurve: 'continuous' }, copyActionText: { color: '#CFE1FF', fontSize: 14, fontWeight: '900' }, pairAction: { flex: 1, minHeight: 42, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#789ED6', borderRadius: 12, borderCurve: 'continuous' },
+  resultOverlay: { position: 'absolute', left: 16, right: 16, bottom: 0 }, resultCard: { gap: 9, padding: 15, borderWidth: 1, borderColor: 'rgba(185, 209, 255, .44)', borderRadius: 20, borderCurve: 'continuous', backgroundColor: 'rgba(5, 18, 46, .94)', boxShadow: '0 12px 32px rgba(0, 0, 0, .3)' }, resultHeader: { flexDirection: 'row', alignItems: 'center', gap: 7 }, deliveryDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#9AA9C1' }, deliveryDotSent: { backgroundColor: '#46D58E' }, deliveryDotFailed: { backgroundColor: '#FF7777' }, deliveryText: { flex: 1, color: '#C8D8F4', fontSize: 13, fontWeight: '800' }, scanAgain: { minHeight: 32, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center' }, scanAgainText: { color: '#8CB9FF', fontSize: 13, fontWeight: '800' }, host: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' }, value: { color: '#D4DEF1', fontSize: 13, lineHeight: 18, fontFamily: process.env.EXPO_OS === 'ios' ? 'Menlo' : 'monospace' }, actionNotice: { color: '#AFCBFF', fontSize: 12, lineHeight: 17 }, actionNoticeError: { color: '#FFB0B0' }, resultActions: { flexDirection: 'row', gap: 9, marginTop: 2 }, openAction: { flex: 1, minHeight: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderCurve: 'continuous', backgroundColor: '#2476F3' }, openActionText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' }, copyAction: { flex: 1, minHeight: 42, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#789ED6', borderRadius: 12, borderCurve: 'continuous' }, copyActionText: { color: '#CFE1FF', fontSize: 14, fontWeight: '900' }, pairAction: { flex: 1, minHeight: 42, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#789ED6', borderRadius: 12, borderCurve: 'continuous' },
 });

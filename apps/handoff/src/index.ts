@@ -125,8 +125,19 @@ export class PairingRoom extends DurableObject<Env> {
     const session = await this.requirePendingSession();
     if (session instanceof Response) return session;
     if (session.mobile) return json({ error: "already_claimed" }, 409);
-    const token = createOpaqueToken();
-    session.mobile = { id: crypto.randomUUID(), tokenHash: await hashToken(token), label: validateLabel(body.label, "このスマホ"), confirmed: false };
+    const existingId = typeof body.mobileReceiverId === "string" ? body.mobileReceiverId : "";
+    const existingToken = typeof body.mobileToken === "string" ? body.mobileToken : "";
+    let token: string;
+    if (existingId || existingToken) {
+      if (!existingId || !existingToken) return json({ error: "unauthorized" }, 401);
+      const existing = await this.env.DB.prepare("SELECT id, token_hash, label FROM receivers WHERE id = ? AND kind = 'mobile' AND revoked_at IS NULL").bind(existingId).first<{ id: string; token_hash: string; label: string }>();
+      if (!existing || existing.token_hash !== await hashToken(existingToken)) return json({ error: "unauthorized" }, 401);
+      token = existingToken;
+      session.mobile = { id: existing.id, tokenHash: existing.token_hash, label: existing.label, confirmed: false };
+    } else {
+      token = createOpaqueToken();
+      session.mobile = { id: crypto.randomUUID(), tokenHash: await hashToken(token), label: validateLabel(body.label, "このスマホ"), confirmed: false };
+    }
     await this.saveSession(session);
     this.broadcast({ type: "claimed", phrase: session.phrase, mobileLabel: session.mobile.label });
     return json({ code: session.code, phrase: session.phrase, expiresAt: session.expiresAt, receiverId: session.mobile.id, token });
@@ -324,6 +335,10 @@ export default {
       return withCors(await claimExtensionConnector(request, env), request);
     }
 
+    if (request.method === "GET" && url.pathname === "/api/v1/mobile/devices") {
+      return withCors(await mobileDevices(request, env), request);
+    }
+
     const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
     if (request.method === "POST" && (url.pathname === "/api/v1/pairs" || url.pathname.endsWith("/claim"))) {
       const rate = await env.PAIR_DO.get(env.PAIR_DO.idFromName(`rate:${ip}`)).fetch("https://pair.internal/rate", { method: "POST" });
@@ -410,15 +425,28 @@ async function sendHandoff(request: Request, env: Env) {
   const token = bearerToken(request);
   const body = await request.json<Record<string, unknown>>().catch(() => null);
   if (!token || !body) return json({ error: "unauthorized" }, 401);
-  const receiverId = typeof body.receiverId === "string" ? body.receiverId : "";
   const data = validatePayload(body.data);
-  if (!receiverId || !data) return json({ error: "invalid_request" }, 400);
+  if (!data) return json({ error: "invalid_request" }, 400);
   const tokenHash = await hashToken(token);
-  const receiver = await env.DB.prepare("SELECT id FROM receivers WHERE id = ? AND token_hash = ? AND kind = 'mobile' AND revoked_at IS NULL").bind(receiverId, tokenHash).first<{ id: string }>();
+  const receiver = await env.DB.prepare("SELECT id FROM receivers WHERE token_hash = ? AND kind = 'mobile' AND revoked_at IS NULL").bind(tokenHash).first<{ id: string }>();
   if (!receiver) return json({ error: "unauthorized" }, 401);
-  const pairing = await env.DB.prepare("SELECT id FROM pairings WHERE mobile_receiver_id = ? AND revoked_at IS NULL").bind(receiverId).first<{ id: string }>();
-  if (!pairing) return json({ error: "not_paired" }, 409);
-  return pairStub(env, pairing.id).fetch("https://pair.internal/handoffs", jsonRequest({ senderId: receiverId, data }));
+  const pairings = await env.DB.prepare("SELECT id FROM pairings WHERE mobile_receiver_id = ? AND revoked_at IS NULL").bind(receiver.id).all<{ id: string }>();
+  if (!pairings.results.length) return json({ error: "not_paired" }, 409);
+  const deliveries = await Promise.all(pairings.results.map(async (pairing) => {
+    const response = await pairStub(env, pairing.id).fetch("https://pair.internal/handoffs", jsonRequest({ senderId: receiver.id, data }));
+    return response.ok;
+  }));
+  const delivered = deliveries.filter(Boolean).length;
+  return delivered ? json({ status: "delivered", delivered }, 201) : json({ error: "not_paired" }, 409);
+}
+
+async function mobileDevices(request: Request, env: Env) {
+  const token = bearerToken(request);
+  if (!token) return json({ error: "unauthorized" }, 401);
+  const mobile = await env.DB.prepare("SELECT id FROM receivers WHERE token_hash = ? AND kind = 'mobile' AND revoked_at IS NULL").bind(await hashToken(token)).first<{ id: string }>();
+  if (!mobile) return json({ error: "unauthorized" }, 401);
+  const devices = await env.DB.prepare("SELECT p.id, r.label, p.created_at AS createdAt FROM pairings p JOIN receivers r ON r.id = p.web_receiver_id WHERE p.mobile_receiver_id = ? AND p.revoked_at IS NULL AND r.revoked_at IS NULL ORDER BY p.created_at DESC").bind(mobile.id).all<{ id: string; label: string; createdAt: number }>();
+  return json({ deviceCount: devices.results.length, devices: devices.results });
 }
 
 async function saveWebPushSubscription(request: Request, env: Env, code: string, webToken: string) {
@@ -539,9 +567,9 @@ async function revokePersistedPair(env: Env, code: string) {
   await env.DB.batch([
     env.DB.prepare("UPDATE pairings SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL").bind(now, code),
     env.DB.prepare("UPDATE connector_link_tokens SET used_at = ? WHERE pairing_id = ? AND used_at IS NULL").bind(now, code),
-    env.DB.prepare("UPDATE receiver_delivery_channels SET revoked_at = ? WHERE receiver_id IN (SELECT web_receiver_id FROM pairings WHERE id = ? UNION SELECT mobile_receiver_id FROM pairings WHERE id = ?) AND revoked_at IS NULL").bind(now, code, code),
-    env.DB.prepare("UPDATE receiver_connectors SET revoked_at = ? WHERE receiver_id IN (SELECT web_receiver_id FROM pairings WHERE id = ? UNION SELECT mobile_receiver_id FROM pairings WHERE id = ?) AND revoked_at IS NULL").bind(now, code, code),
-    env.DB.prepare("UPDATE receivers SET revoked_at = ? WHERE id IN (SELECT web_receiver_id FROM pairings WHERE id = ? UNION SELECT mobile_receiver_id FROM pairings WHERE id = ?) AND revoked_at IS NULL").bind(now, code, code)
+    env.DB.prepare("UPDATE receiver_delivery_channels SET revoked_at = ? WHERE receiver_id = (SELECT web_receiver_id FROM pairings WHERE id = ?) AND revoked_at IS NULL").bind(now, code),
+    env.DB.prepare("UPDATE receiver_connectors SET revoked_at = ? WHERE receiver_id = (SELECT web_receiver_id FROM pairings WHERE id = ?) AND revoked_at IS NULL").bind(now, code),
+    env.DB.prepare("UPDATE receivers SET revoked_at = ? WHERE id = (SELECT web_receiver_id FROM pairings WHERE id = ?) AND revoked_at IS NULL").bind(now, code)
   ]);
 }
 

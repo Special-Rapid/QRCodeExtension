@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 
-const CREDENTIAL_KEY = 'qr-scan-handoff-credential';
+const MOBILE_IDENTITY_KEY = 'qr-scan-handoff-credential';
 const HANDOFF_ORIGIN = process.env.EXPO_PUBLIC_HANDOFF_ORIGIN ?? 'https://qr.snkisk.com';
 
 export type PairCredential = {
@@ -13,10 +13,25 @@ export type PairCredential = {
   status?: 'pending' | 'paired' | 'expired' | 'revoked';
 };
 
+export type MobileIdentity = {
+  receiverId: string;
+  token: string;
+  label: string;
+};
+
+export type PairedPcDevice = {
+  id: string;
+  label: string;
+  createdAt: number;
+};
+
 type ApiError = Error & { code?: string };
 
-export async function claimPair(code: string, label: string): Promise<PairCredential> {
-  return request(`/api/v1/pairs/${encodeURIComponent(code)}/claim`, { method: 'POST', body: { label } });
+export async function claimPair(code: string, label: string, identity?: MobileIdentity | null): Promise<PairCredential> {
+  return request(`/api/v1/pairs/${encodeURIComponent(code)}/claim`, {
+    method: 'POST',
+    body: { label, mobileReceiverId: identity?.receiverId, mobileToken: identity?.token },
+  });
 }
 
 export async function confirmPair(credential: PairCredential) {
@@ -24,7 +39,7 @@ export async function confirmPair(credential: PairCredential) {
     method: 'POST',
     body: { role: 'mobile', token: credential.token },
   });
-  if (response.status === 'paired') await saveCredential({ ...credential, status: 'paired' });
+  if (response.status === 'paired') await saveMobileIdentity({ receiverId: credential.receiverId, token: credential.token, label: 'このスマホ' });
   return response as { status: PairCredential['status']; phrase: string; peerConfirmed: boolean };
 }
 
@@ -33,24 +48,29 @@ export async function getPairStatus(credential: PairCredential) {
     headers: { Authorization: `Bearer ${credential.token}`, 'X-QR-Role': 'mobile' },
   });
   const updated = { ...credential, ...response, role: 'mobile' as const };
-  if (updated.status === 'paired') await saveCredential(updated);
-  if (updated.status === 'revoked' || updated.status === 'expired') await clearCredential();
+  if (updated.status === 'paired') await saveMobileIdentity({ receiverId: updated.receiverId, token: updated.token, label: 'このスマホ' });
   return updated as PairCredential & { peerLabel: string | null; peerConfirmed: boolean; selfConfirmed: boolean };
 }
 
 export async function sendHandoff(data: string) {
-  const credential = await loadCredential();
-  if (!credential) throw apiError('not_paired');
+  const identity = await loadMobileIdentity();
+  if (!identity) throw apiError('not_paired');
   try {
     return await request('/api/v1/handoffs', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${credential.token}` },
-      body: { receiverId: credential.receiverId, data },
+      headers: { Authorization: `Bearer ${identity.token}` },
+      body: { data },
     });
   } catch (error) {
-    if (error instanceof Error && ['unauthorized', 'not_paired'].includes((error as ApiError).code ?? '')) await clearCredential();
+    if (error instanceof Error && (error as ApiError).code === 'unauthorized') await clearMobileIdentity();
     throw error;
   }
+}
+
+export async function getMobileDevices(identity: MobileIdentity) {
+  return request('/api/v1/mobile/devices', {
+    headers: { Authorization: `Bearer ${identity.token}` },
+  }) as Promise<{ deviceCount: number; devices: PairedPcDevice[] }>;
 }
 
 export async function revokePair(credential: PairCredential) {
@@ -58,25 +78,28 @@ export async function revokePair(credential: PairCredential) {
     method: 'POST',
     body: { role: 'mobile', token: credential.token },
   });
-  await clearCredential();
 }
 
-export function loadCredential() {
-  return SecureStore.getItemAsync(CREDENTIAL_KEY).then(async (value) => {
+export function loadMobileIdentity() {
+  return SecureStore.getItemAsync(MOBILE_IDENTITY_KEY).then(async (value) => {
     if (!value) return null;
-    try { return JSON.parse(value) as PairCredential; } catch {
-      await SecureStore.deleteItemAsync(CREDENTIAL_KEY);
+    try {
+      const parsed = JSON.parse(value) as Partial<MobileIdentity>;
+      if (typeof parsed.receiverId === 'string' && typeof parsed.token === 'string') return { receiverId: parsed.receiverId, token: parsed.token, label: typeof parsed.label === 'string' ? parsed.label : 'このスマホ' };
+      throw new Error('invalid_identity');
+    } catch {
+      await SecureStore.deleteItemAsync(MOBILE_IDENTITY_KEY);
       return null;
     }
   });
 }
 
-export function clearCredential() {
-  return SecureStore.deleteItemAsync(CREDENTIAL_KEY);
+export function clearMobileIdentity() {
+  return SecureStore.deleteItemAsync(MOBILE_IDENTITY_KEY);
 }
 
-async function saveCredential(credential: PairCredential) {
-  await SecureStore.setItemAsync(CREDENTIAL_KEY, JSON.stringify(credential));
+async function saveMobileIdentity(identity: MobileIdentity) {
+  await SecureStore.setItemAsync(MOBILE_IDENTITY_KEY, JSON.stringify(identity));
 }
 
 async function request(path: string, options: { method?: string; headers?: Record<string, string>; body?: object } = {}) {

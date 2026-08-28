@@ -57,8 +57,50 @@ describe('handoff Worker integration', () => {
     expect(inboxAfterRevoke.status).toBe(401);
     const socketAfterRevoke = await api(`/api/v1/pairs/${web.code}/ws`, { headers: { cookie: webCookie!, upgrade: 'websocket' } });
     expect(socketAfterRevoke.status).toBe(401);
-    const handoffAfterRevoke = await api('/api/v1/handoffs', { method: 'POST', body: JSON.stringify({ receiverId: mobile.receiverId, data: 'https://example.com/after-revoke' }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
-    expect(handoffAfterRevoke.status).toBe(401);
+    const handoffAfterRevoke = await api('/api/v1/handoffs', { method: 'POST', body: JSON.stringify({ data: 'https://example.com/after-revoke' }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
+    expect(handoffAfterRevoke.status).toBe(409);
+  });
+
+  it('fans one stable mobile identity out to multiple PC receivers and revokes only the chosen PC', async () => {
+    const firstCreated = await api('/api/v1/pairs', { method: 'POST', body: JSON.stringify({ label: 'Mac のブラウザ' }), headers: { 'content-type': 'application/json' } });
+    const firstWeb = await firstCreated.json<{ code: string; receiverId: string }>();
+    const firstCookie = firstCreated.headers.get('set-cookie')!;
+    const firstClaim = await api(`/api/v1/pairs/${firstWeb.code}/claim`, { method: 'POST', body: JSON.stringify({ label: 'Kenta の Android' }), headers: { 'content-type': 'application/json' } });
+    const mobile = await firstClaim.json<{ token: string; receiverId: string }>();
+    await api(`/api/v1/pairs/${firstWeb.code}/confirm`, { method: 'POST', body: JSON.stringify({ role: 'web' }), headers: { 'content-type': 'application/json', cookie: firstCookie } });
+    await api(`/api/v1/pairs/${firstWeb.code}/confirm`, { method: 'POST', body: JSON.stringify({ role: 'mobile', token: mobile.token }), headers: { 'content-type': 'application/json' } });
+
+    const secondCreated = await api('/api/v1/pairs', { method: 'POST', body: JSON.stringify({ label: 'Windows のブラウザ' }), headers: { 'content-type': 'application/json' } });
+    const secondWeb = await secondCreated.json<{ code: string; receiverId: string }>();
+    const secondCookie = secondCreated.headers.get('set-cookie')!;
+    const secondClaim = await api(`/api/v1/pairs/${secondWeb.code}/claim`, { method: 'POST', body: JSON.stringify({ label: 'ignored', mobileReceiverId: mobile.receiverId, mobileToken: mobile.token }), headers: { 'content-type': 'application/json' } });
+    expect(secondClaim.status).toBe(200);
+    await expect(secondClaim.json()).resolves.toMatchObject({ receiverId: mobile.receiverId, token: mobile.token });
+    await api(`/api/v1/pairs/${secondWeb.code}/confirm`, { method: 'POST', body: JSON.stringify({ role: 'web' }), headers: { 'content-type': 'application/json', cookie: secondCookie } });
+    await api(`/api/v1/pairs/${secondWeb.code}/confirm`, { method: 'POST', body: JSON.stringify({ role: 'mobile', token: mobile.token }), headers: { 'content-type': 'application/json' } });
+
+    const devices = await api('/api/v1/mobile/devices', { headers: { authorization: `Bearer ${mobile.token}` } });
+    await expect(devices.json()).resolves.toMatchObject({ deviceCount: 2, devices: [{ id: secondWeb.code, label: 'Windows のブラウザ' }, { id: firstWeb.code, label: 'Mac のブラウザ' }] });
+
+    const sent = await api('/api/v1/handoffs', { method: 'POST', body: JSON.stringify({ data: 'https://example.com/to-both' }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
+    await expect(sent.json()).resolves.toEqual({ status: 'delivered', delivered: 2 });
+    for (const [web, cookie] of [[firstWeb, firstCookie], [secondWeb, secondCookie]] as const) {
+      const inbox = await api(`/api/v1/pairs/${web.code}/events?receiver=${web.receiverId}`, { headers: { cookie } });
+      await expect(inbox.json()).resolves.toMatchObject({ events: [{ data: 'https://example.com/to-both' }] });
+    }
+
+    const revoked = await api(`/api/v1/pairs/${firstWeb.code}/revoke`, { method: 'POST', body: JSON.stringify({ role: 'mobile', token: mobile.token }), headers: { 'content-type': 'application/json' } });
+    expect(revoked.status).toBe(200);
+    const remaining = await api('/api/v1/mobile/devices', { headers: { authorization: `Bearer ${mobile.token}` } });
+    await expect(remaining.json()).resolves.toMatchObject({ deviceCount: 1, devices: [{ id: secondWeb.code, label: 'Windows のブラウザ' }] });
+
+    const sentAfterRevoke = await api('/api/v1/handoffs', { method: 'POST', body: JSON.stringify({ data: 'https://example.com/second-only' }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
+    await expect(sentAfterRevoke.json()).resolves.toEqual({ status: 'delivered', delivered: 1 });
+    const firstInbox = await api(`/api/v1/pairs/${firstWeb.code}/events?receiver=${firstWeb.receiverId}`, { headers: { cookie: firstCookie } });
+    expect(firstInbox.status).toBe(401);
+    const secondInbox = await api(`/api/v1/pairs/${secondWeb.code}/events?receiver=${secondWeb.receiverId}`, { headers: { cookie: secondCookie } });
+    const secondEvents = await secondInbox.json<{ events: Array<{ data: string }> }>();
+    expect(secondEvents.events.some((event) => event.data === 'https://example.com/second-only')).toBe(true);
   });
 
   it('allows the mobile receiver to revoke a paired connection', async () => {

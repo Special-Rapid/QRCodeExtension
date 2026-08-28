@@ -19,7 +19,7 @@ describe("web receiver markup", () => {
       SELF.fetch("https://qr.test/app.js").then((response) => response.text()),
       SELF.fetch("https://qr.test/service-worker.js").then((response) => response.text())
     ]);
-    for (const selector of ["#notification-button", "#notification-status", "#connector-panel", "#connect-extension", "#disconnect-extension"]) {
+    for (const selector of ["#notification-button", "#notification-status", "#device-count", "#connector-panel", "#connect-extension", "#disconnect-extension"]) {
       expect(app).toContain(selector);
       expect(html).toContain(`id="${selector.slice(1)}"`);
     }
@@ -28,6 +28,9 @@ describe("web receiver markup", () => {
     expect(serviceWorker).not.toContain("event.data.text");
     expect(app).toContain('import { notificationPermissionState } from "/notification-state.js"');
     expect(app).toContain('push_unavailable: "Web通知はまだ準備中です。管理者が通知設定を完了した後、もう一度試してください。"');
+    expect(app).toContain('showForegroundNotification');
+    expect(app).toContain('スマホから新しい読み取り結果が届きました。');
+    expect(app).not.toContain('body: event.data');
   });
 
   it("uses the handoff event id to replace, not re-alert, a redelivered web Push", async () => {

@@ -78,7 +78,7 @@ function openSocket() {
   state.socket = socket;
   socket.addEventListener("message", (message) => {
     const data = JSON.parse(message.data);
-    if (data.type === "handoff") addEvent(data.event);
+    if (data.type === "handoff" && addEvent(data.event)) showForegroundNotification(data.event);
     if (data.type === "claimed") { setPairStatus(`${data.mobileLabel} がコードを入力しました。確認フレーズを見比べてください。`); $("#confirm-web").disabled = false; }
     if (data.type === "paired") void refreshPairing();
     if (data.type === "revoked") renderUnpaired(`${data.by} が連携を解除しました。`);
@@ -98,6 +98,7 @@ function renderUnpaired(message = "") {
   $("#pairing-panel").hidden = true;
   $("#inbox-panel").hidden = true;
   $("#connector-panel").hidden = true;
+  renderDeviceSummary();
   if (message) $("#inbox-description").textContent = message;
 }
 
@@ -119,12 +120,27 @@ function renderInbox() {
   $("#pairing-panel").hidden = true;
   $("#inbox-panel").hidden = false;
   $("#connector-panel").hidden = false;
-  $("#connection-state").textContent = "スマホと接続済み";
-  $("#device-details").textContent = `${state.credential.peerLabel ?? "スマホ"} と連携済みです。通知と受信箱はこのページでまとめて管理します。`;
+  renderDeviceSummary();
   renderConnector();
 }
 
+function renderDeviceSummary() {
+  if (!state.credential || state.credential.status !== "paired") {
+    $("#connection-state").textContent = "未接続";
+    $("#device-count").textContent = "0台";
+    $("#device-details").textContent = "連携すると、ここにスマホの名前が表示されます。";
+    return;
+  }
+  const mobile = state.credential?.peerLabel ?? "スマホ";
+  const connectorCount = state.connector ? 1 : 0;
+  const count = 1 + connectorCount;
+  $("#connection-state").textContent = `接続中 ${count}台`;
+  $("#device-count").textContent = `${count}台`;
+  $("#device-details").textContent = connectorCount ? `${mobile} と連携済みです。Chrome拡張もこのPCの高速通知用に接続されています。` : `${mobile} と連携済みです。通知と受信箱はこのページでまとめて管理します。`;
+}
+
 function renderConnector() {
+  renderDeviceSummary();
   const connect = $("#connect-extension");
   const disconnect = $("#disconnect-extension");
   if (state.connector) {
@@ -144,7 +160,7 @@ function renderConnector() {
 }
 
 function addEvent(event) {
-  if (state.events.has(event.id)) return;
+  if (state.events.has(event.id)) return false;
   state.events.set(event.id, event);
   const fragment = $("#event-template").content.cloneNode(true);
   fragment.querySelector(".event-host").textContent = event.host ?? "テキスト・バーコード";
@@ -155,6 +171,14 @@ function addEvent(event) {
   fragment.querySelector(".copy-event").addEventListener("click", async () => { await navigator.clipboard.writeText(event.data); });
   $("#event-list").prepend(fragment);
   $("#empty-inbox").hidden = state.events.size !== 0;
+  return true;
+}
+
+function showForegroundNotification(event) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  try {
+    new Notification("QR Scan", { body: "スマホから新しい読み取り結果が届きました。", tag: `qr-scan-handoff:${event.id}`, renotify: false });
+  } catch { /* The inbox update remains the primary visible fallback. */ }
 }
 
 async function requestNotifications() {
