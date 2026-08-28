@@ -14,6 +14,9 @@ nav { display: grid; gap: 7px; }
 .view h1 { margin: 0; color: #091537; font-size: clamp(32px, 5vw, 54px); letter-spacing: -.055em; line-height: 1; }
 .page-heading { display: flex; align-items: start; justify-content: space-between; gap: 24px; }
 .page-heading p { margin: 14px 0 0; color: #62718a; font-size: 15px; }
+.notification-controls { display: grid; justify-items: end; gap: 8px; }
+.notification-controls #notification-status { max-width: 270px; margin: 0; color: #62718a; font-size: 12px; line-height: 1.45; text-align: right; }
+.notification-controls #notification-status.is-error { color: #b42318; }
 .primary-button, .quiet-button, .text-button { min-height: 46px; border-radius: 9px; cursor: pointer; font-size: 15px; font-weight: 750; }
 .primary-button { border: 1px solid #1463f3; background: #1463f3; color: #fff; padding: 0 20px; box-shadow: 0 7px 16px rgba(20, 99, 243, .18); }
 .primary-button:hover { background: #0754de; border-color: #0754de; }
@@ -51,4 +54,4 @@ nav { display: grid; gap: 7px; }
 .detail-panel { margin-top: 34px; max-width: 700px; padding: 26px; border: 1px solid #c8d8f2; border-radius: 14px; color: #5f6f89; line-height: 1.6; }
 .detail-panel p { margin: 9px 0 0; }
 button:focus-visible, a:focus-visible { outline: 3px solid #8bb5ff; outline-offset: 3px; }
-@media (max-width: 760px) { .app-shell { display: block; } .rail { gap: 18px; padding: 18px 20px; border-right: 0; border-bottom: 1px solid #e2e8f2; } nav { display: flex; overflow-x: auto; } .nav-item { flex: 0 0 auto; } .rail-note { display: none; } .main-content { padding: 35px 21px; } .pair-start { grid-template-columns: auto 1fr; } .pair-start .primary-button { grid-column: 1 / -1; } .event { grid-template-columns: auto minmax(0, 1fr); } .event-actions { grid-column: 1 / -1; } .event-actions > * { flex: 1; } .page-heading { display: block; } .page-heading .quiet-button { margin-top: 20px; } }
+@media (max-width: 760px) { .app-shell { display: block; } .rail { gap: 18px; padding: 18px 20px; border-right: 0; border-bottom: 1px solid #e2e8f2; } nav { display: flex; overflow-x: auto; } .nav-item { flex: 0 0 auto; } .rail-note { display: none; } .main-content { padding: 35px 21px; } .pair-start { grid-template-columns: auto 1fr; } .pair-start .primary-button { grid-column: 1 / -1; } .event { grid-template-columns: auto minmax(0, 1fr); } .event-actions { grid-column: 1 / -1; } .event-actions > * { flex: 1; } .page-heading { display: block; } .notification-controls { justify-items: start; margin-top: 20px; } .notification-controls #notification-status { text-align: left; } }

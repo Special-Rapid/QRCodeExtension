@@ -1,3 +1,5 @@
+import { notificationPermissionState } from "/notification-state.js";
+
 const key = "qr-scan-web-receiver";
 const state = { credential: loadCredential(), socket: null, poll: null, events: new Map(), extensionId: null, connector: null };
 const $ = (selector) => document.querySelector(selector);
@@ -156,24 +158,37 @@ function addEvent(event) {
 }
 
 async function requestNotifications() {
-  if (!state.credential || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  if (!state.credential) return setNotificationStatus("先にスマホと連携してください。", true);
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return setNotificationStatus("このブラウザはWeb通知に対応していません。", true);
+  const button = $("#notification-button");
+  button.disabled = true;
+  setNotificationStatus("通知を準備しています…");
   try {
     const permission = await Notification.requestPermission();
-    if (permission !== "granted") return refreshWebPushStatus();
+    const permissionState = notificationPermissionState(permission);
+    if (!permissionState.continueSetup) return setNotificationStatus(permissionState.message, permissionState.isError);
     const registration = await navigator.serviceWorker.register("/service-worker.js", { scope: "/" });
     const { publicKey } = await api("/api/v1/vapid-public-key");
     let subscription = await registration.pushManager.getSubscription();
     if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToUint8Array(publicKey) });
     await api(`/api/v1/pairs/${state.credential.code}/push-subscriptions`, { method: "POST", body: { subscription: subscription.toJSON() } });
-    $("#notification-button").textContent = "Web通知は有効です";
-  } catch (error) { setPairStatus(messageFor(error), true); }
+    button.textContent = "Web通知は有効です";
+    setNotificationStatus("このブラウザに届くようになりました。");
+  } catch (error) { setNotificationStatus(messageFor(error), true); } finally { button.disabled = false; }
 }
 
 async function refreshWebPushStatus() {
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return ($("#notification-button").hidden = true);
-  const registration = await navigator.serviceWorker.getRegistration("/");
-  const subscription = await registration?.pushManager.getSubscription();
-  $("#notification-button").textContent = subscription && Notification.permission === "granted" ? "Web通知は有効です" : "Web通知を有効にする";
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    $("#notification-button").hidden = true;
+    return setNotificationStatus("このブラウザはWeb通知に対応していません。", true);
+  }
+  try {
+    const registration = await navigator.serviceWorker.getRegistration("/");
+    const subscription = await registration?.pushManager.getSubscription();
+    const enabled = subscription && Notification.permission === "granted";
+    $("#notification-button").textContent = enabled ? "Web通知は有効です" : "Web通知を有効にする";
+    setNotificationStatus(enabled ? "このブラウザに届くようになりました。" : "");
+  } catch { setNotificationStatus("通知の状態を確認できませんでした。ページを再読み込みしてください。", true); }
 }
 
 function receiveExtensionBridge(event) {
@@ -218,10 +233,11 @@ async function revokePair() {
 }
 
 function setPairStatus(message, isError = false) { const target = $("#pair-status"); target.textContent = message; target.style.color = isError ? "#b42318" : ""; }
+function setNotificationStatus(message, isError = false) { const target = $("#notification-status"); target.textContent = message; target.classList.toggle("is-error", isError); }
 function authHeaders() { return { "X-QR-Role": "web" }; }
 function loadCredential() { try { return JSON.parse(localStorage.getItem(key) ?? sessionStorage.getItem(key) ?? "null"); } catch { localStorage.removeItem(key); sessionStorage.removeItem(key); return null; } }
 function browserLabel() { return navigator.userAgent.includes("Mac") ? "Mac のブラウザ" : "このブラウザ"; }
 function base64UrlToUint8Array(value) { const padded = value + "=".repeat((4 - value.length % 4) % 4); const binary = atob(padded.replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(binary, (character) => character.charCodeAt(0)); }
 async function api(path, options = {}) { const response = await fetch(path, { ...options, headers: { "content-type": "application/json", ...(options.headers ?? {}) }, body: options.body ? JSON.stringify(options.body) : undefined }); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(apiMessage(data.error)); return data; }
-function apiMessage(code) { return ({ rate_limited: "試行回数が多すぎます。少し待ってから試してください。", expired: "連携コードの有効期限が切れました。", unauthorized: "連携情報を確認できませんでした。", already_claimed: "このコードは別のスマホで入力済みです。", push_unavailable: "通知の準備中です。少し待ってからもう一度試してください。", invalid_subscription: "このブラウザでは通知を登録できませんでした。", link_expired: "Chrome拡張の接続時間が切れました。もう一度試してください。" })[code] ?? "通信に失敗しました。"; }
+function apiMessage(code) { return ({ rate_limited: "試行回数が多すぎます。少し待ってから試してください。", expired: "連携コードの有効期限が切れました。", unauthorized: "連携情報を確認できませんでした。", already_claimed: "このコードは別のスマホで入力済みです。", push_unavailable: "Web通知はまだ準備中です。管理者が通知設定を完了した後、もう一度試してください。", invalid_subscription: "このブラウザでは通知を登録できませんでした。", link_expired: "Chrome拡張の接続時間が切れました。もう一度試してください。" })[code] ?? "通信に失敗しました。"; }
 function messageFor(error) { return error instanceof Error ? error.message : "通信に失敗しました。"; }

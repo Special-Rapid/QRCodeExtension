@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("declares a camera-free Manifest V3 extension with a Chrome 121+ fast connector", async () => {
@@ -14,4 +14,13 @@ test("declares a camera-free Manifest V3 extension with a Chrome 121+ fast conne
   assert.equal(manifest.action.default_popup, "popup.html");
   assert.deepEqual(manifest.content_scripts, [{ matches: ["https://qr.snkisk.com/*"], js: ["connector-bridge.js"], run_at: "document_start" }]);
   assert.equal(JSON.stringify(manifest).includes("camera"), false);
+
+  const manifestFiles = [
+    manifest.background.service_worker,
+    manifest.options_ui.page,
+    manifest.action.default_popup,
+    manifest.icons[128],
+    ...manifest.content_scripts.flatMap((contentScript) => contentScript.js)
+  ];
+  await Promise.all(manifestFiles.map((file) => access(`dist/${file}`)));
 });
