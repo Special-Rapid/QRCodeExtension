@@ -13,7 +13,7 @@ export default function RootLayout() {
           headerTitleStyle: { fontWeight: '700' },
           contentStyle: { backgroundColor: '#F7FAFF' },
         }}>
-        <Stack.Screen name="index" options={{ title: 'QR Scan' }} />
+        <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="pair" options={{ title: 'PCと連携' }} />
       </Stack>
     </>
