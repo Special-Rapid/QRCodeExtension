@@ -7,8 +7,13 @@ test("extracts literal HTTP(S) URL text locally and trims surrounding prose punc
   assert.deepEqual(urls, ["https://example.com/path", "http://example.test/docs?q=1"]);
 });
 
-test("does not turn plain text or script-like values into detected URLs", () => {
-  assert.deepEqual(extractHttpUrls("javascript:alert(1) example.com ftp://example.test"), []);
+test("detects a scheme-less domain and makes HTTPS explicit", () => {
+  const urls = extractHttpUrls("案内: example.com/path?q=1。 次は www.example.test/docs)。");
+  assert.deepEqual(urls, ["https://example.com/path?q=1", "https://www.example.test/docs"]);
+});
+
+test("does not turn email addresses, script-like values, non-HTTP schemes, or numeric prose into detected URLs", () => {
+  assert.deepEqual(extractHttpUrls("javascript:alert(1) hello@example.com ftp://example.test v1.2.3 localhost"), []);
 });
 
 test("deduplicates URL text that was also found in a QR code", () => {

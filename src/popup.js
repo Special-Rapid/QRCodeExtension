@@ -1,5 +1,6 @@
 import { decodeImageSource } from "./qr-decoder.js";
 import { extractHttpUrls, mergeDecodedValues } from "./url-text.js";
+import { toSafeHttpUrl } from "./safe-url.js";
 
 const scanPageButton = document.querySelector("#scan-page");
 const scanButtonContent = document.querySelector(".button-content");
@@ -78,12 +79,13 @@ function createResultItem(result) {
   const actions = document.createElement("div");
   actions.className = "result-actions";
 
-  if (isHttpUrl(result.data)) {
+  const openUrl = toSafeHttpUrl(result.data);
+  if (openUrl) {
     const open = document.createElement("button");
     open.className = "result-action";
     open.type = "button";
     open.textContent = "開く";
-    open.addEventListener("click", () => chrome.tabs.create({ url: result.data }));
+    open.addEventListener("click", () => chrome.tabs.create({ url: openUrl.toString() }));
     actions.append(open);
   }
 
@@ -102,15 +104,6 @@ function createResultItem(result) {
   actions.append(copy);
   item.append(value, actions);
   return item;
-}
-
-function isHttpUrl(value) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:";
-  } catch {
-    return false;
-  }
 }
 
 async function readPageText(tabId) {

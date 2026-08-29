@@ -41,7 +41,7 @@ describe('handoff Worker integration', () => {
     expect(socketResponse.webSocket).not.toBeNull();
     socketResponse.webSocket!.accept();
 
-    const sent = await api('/api/v1/handoffs', { method: 'POST', body: JSON.stringify({ receiverId: mobile.receiverId, data: 'https://example.com/from-phone' }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
+    const sent = await api('/api/v1/handoffs', { method: 'POST', body: JSON.stringify({ receiverId: mobile.receiverId, data: 'example.com/from-phone' }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
     expect(sent.status).toBe(201);
 
     const denied = await api(`/api/v1/pairs/${web.code}/events?receiver=${web.receiverId}`);
@@ -49,7 +49,7 @@ describe('handoff Worker integration', () => {
 
     const inbox = await api(`/api/v1/pairs/${web.code}/events?receiver=${web.receiverId}`, { headers: { cookie: webCookie! } });
     expect(inbox.status).toBe(200);
-    await expect(inbox.json()).resolves.toMatchObject({ events: [{ data: 'https://example.com/from-phone', host: 'example.com' }] });
+    await expect(inbox.json()).resolves.toMatchObject({ events: [{ data: 'example.com/from-phone', host: 'example.com', openUrl: 'https://example.com/from-phone' }] });
 
     const revoked = await api(`/api/v1/pairs/${web.code}/revoke`, { method: 'POST', body: '{}' , headers: { 'content-type': 'application/json', cookie: webCookie! } });
     expect(await revoked.json()).toEqual({ status: 'revoked' });

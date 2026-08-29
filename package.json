@@ -5,9 +5,11 @@
   "description": "Camera-free QR code scanner Chrome extension",
   "type": "module",
   "scripts": {
+    "generate:brand-assets": "node scripts/generate-brand-assets.mjs",
+    "check:brand-assets": "node scripts/generate-brand-assets.mjs --check",
     "build": "node scripts/build.mjs",
     "test": "node --test test/**/*.test.mjs",
-    "check": "npm run build && npm test"
+    "check": "npm run check:brand-assets && npm run build && npm test"
   },
   "dependencies": {
     "jsqr": "^1.4.0"

@@ -40,9 +40,9 @@ function restoreBackground(previous) {
 
 async function send(environment, message) { return new Promise((resolve) => environment.messageEvent.emit(message, {}, resolve)); }
 
-test("claims a one-time website link as a private connector and opens a received HTTP(S) URL from its notification", async () => {
+test("claims a one-time website link as a private connector and opens a received explicit or scheme-less web URL from its notification", async () => {
   const environment = createChrome();
-  const replies = [reply(200, { publicKey: "AQID" }), reply(201, { connector: { id: "connector-1", token: "connector-secret", code: "AB2CDE3F" } }), reply(200, { status: "active" }), reply(200, { events: [{ id: "event-1", data: "https://example.com/from-phone" }] })];
+  const replies = [reply(200, { publicKey: "AQID" }), reply(201, { connector: { id: "connector-1", token: "connector-secret", code: "AB2CDE3F" } }), reply(200, { status: "active" }), reply(200, { events: [{ id: "event-1", data: "example.com/from-phone" }] })];
   environment.fetch = async () => replies.shift();
   const previousRegistration = globalThis.registration;
   const previousWebSocket = globalThis.WebSocket;

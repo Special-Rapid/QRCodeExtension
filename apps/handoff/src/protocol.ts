@@ -5,6 +5,7 @@ export const MAX_PAYLOAD_LENGTH = 4096;
 
 const PAIR_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const WORDS = ["あお", "あさ", "いと", "うみ", "えき", "おと", "かぜ", "かわ", "きいろ", "くも", "こえ", "さくら", "しろ", "そら", "つき", "てら", "なみ", "にじ", "はな", "ひかり", "ふね", "ほし", "まど", "みち", "もり", "やま", "ゆき", "よる", "りんご", "わた"];
+const BARE_WEB_URL = /^(?:[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?\.)+[a-z](?:[a-z\d-]{0,61}[a-z\d])?(?::\d{1,5})?(?:\/[^\s<>"'`]*)?$/iu;
 
 export type ReceiverRole = "web" | "mobile";
 
@@ -27,8 +28,11 @@ export function createOpaqueToken() {
 }
 
 export function isSafeOpenUrl(value: string) {
+  const candidate = value.trim();
+  const explicitHttp = /^https?:\/\//iu.test(candidate);
+  if (!explicitHttp && !BARE_WEB_URL.test(candidate)) return null;
   try {
-    const url = new URL(value);
+    const url = new URL(explicitHttp ? candidate : `https://${candidate}`);
     return url.protocol === "https:" || url.protocol === "http:" ? url : null;
   } catch {
     return null;

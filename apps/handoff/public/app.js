@@ -167,7 +167,7 @@ function addEvent(event) {
   fragment.querySelector(".event-value").textContent = event.data;
   fragment.querySelector(".event-time").textContent = new Date(event.createdAt).toLocaleString("ja-JP");
   const open = fragment.querySelector(".open-event");
-  if (event.host) open.addEventListener("click", () => window.open(event.data, "_blank", "noopener,noreferrer")); else open.remove();
+  if (event.openUrl) open.addEventListener("click", () => window.open(event.openUrl, "_blank", "noopener,noreferrer")); else open.remove();
   fragment.querySelector(".copy-event").addEventListener("click", async () => { await navigator.clipboard.writeText(event.data); });
   $("#event-list").prepend(fragment);
   $("#empty-inbox").hidden = state.events.size !== 0;

@@ -13,8 +13,10 @@ describe("handoff protocol", () => {
     expect(createConfirmationPhrase(new Uint8Array([0, 1]))).toBe("あお・あさ");
   });
 
-  it("allows only explicit HTTP(S) open actions", () => {
+  it("normalizes safe scheme-less web URLs and rejects non-web payloads", () => {
     expect(isSafeOpenUrl("https://example.com/path")?.host).toBe("example.com");
+    expect(isSafeOpenUrl("example.com/path")?.toString()).toBe("https://example.com/path");
+    expect(isSafeOpenUrl("hello@example.com")).toBeNull();
     expect(isSafeOpenUrl("javascript:alert(1)")).toBeNull();
   });
 

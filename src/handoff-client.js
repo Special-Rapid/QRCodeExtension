@@ -1,3 +1,5 @@
+import { toSafeHttpUrl } from "./safe-url.js";
+
 export const HANDOFF_ORIGIN = "https://qr.snkisk.com";
 
 export async function handoffApi(path, { method = "GET", body, headers = {} } = {}) {
@@ -18,12 +20,7 @@ export async function handoffApi(path, { method = "GET", body, headers = {} } = 
 }
 
 export function isSafeOpenUrl(value) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:" ? url : null;
-  } catch {
-    return null;
-  }
+  return toSafeHttpUrl(value);
 }
 
 export function handoffError(code) {

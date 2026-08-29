@@ -1,3 +1,5 @@
+import { toSafeHttpUrl } from "./safe-url.js";
+
 const CONNECTOR_KEY = "qr-scan-connector";
 const API_ORIGIN = "https://qr.snkisk.com";
 const PROTOCOL_PREFIX = "qr-scan.";
@@ -99,11 +101,7 @@ async function handoffUrl(eventId) {
 }
 
 function safeHttpUrl(value) {
-  if (typeof value !== "string") return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
-  } catch { return null; }
+  return toSafeHttpUrl(value)?.toString() ?? null;
 }
 
 async function clearConnector() { clearSocket(); await chrome.storage.local.remove(CONNECTOR_KEY); }

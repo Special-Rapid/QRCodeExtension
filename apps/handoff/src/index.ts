@@ -579,7 +579,7 @@ function pairStub(env: Env, code: string) { return env.PAIR_DO.get(env.PAIR_DO.i
 function bearerToken(request: Request) { return request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? ""; }
 function json(data: unknown, status = 200) { return Response.json(data, { status, headers: JSON_HEADERS }); }
 function jsonRequest(data: unknown) { return new Request("https://pair.internal", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(data) }); }
-function publicEvent(event: HandoffEvent) { const url = isSafeOpenUrl(event.data); return { id: event.id, data: event.data, host: url?.host ?? null, createdAt: event.createdAt, expiresAt: event.expiresAt }; }
+function publicEvent(event: HandoffEvent) { const url = isSafeOpenUrl(event.data); return { id: event.id, data: event.data, host: url?.host ?? null, openUrl: url?.toString() ?? null, createdAt: event.createdAt, expiresAt: event.expiresAt }; }
 function connectorProtocolToken(request: Request) { return request.headers.get("sec-websocket-protocol")?.split(",").map((value) => value.trim()).find((value) => value.startsWith(CONNECTOR_PROTOCOL_PREFIX))?.slice(CONNECTOR_PROTOCOL_PREFIX.length) ?? ""; }
 function corsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get("origin");

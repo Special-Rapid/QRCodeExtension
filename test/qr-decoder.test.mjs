@@ -3,6 +3,7 @@ import test from "node:test";
 import QRCode from "qrcode";
 import { PNG } from "pngjs";
 import { decodeImageData } from "../src/qr-decoder.js";
+import { toSafeHttpUrl } from "../src/safe-url.js";
 
 async function rasterize(value) {
   const dataUrl = await QRCode.toDataURL(value, { errorCorrectionLevel: "H", margin: 2, width: 300 });
@@ -54,14 +55,10 @@ test("returns null for an image with no QR code", () => {
   assert.deepEqual(decodeImageData({ data, width: 80, height: 80 }), []);
 });
 
-test("recognizes only safe web URLs as openable", () => {
-  const isHttpUrl = (value) => {
-    try {
-      const url = new URL(value);
-      return url.protocol === "https:" || url.protocol === "http:";
-    } catch { return false; }
-  };
-  assert.equal(isHttpUrl("https://example.com"), true);
-  assert.equal(isHttpUrl("javascript:alert(1)"), false);
-  assert.equal(isHttpUrl("not a url"), false);
+test("normalizes safe scheme-less web URLs but never opens non-web payloads", () => {
+  assert.equal(toSafeHttpUrl("https://example.com")?.toString(), "https://example.com/");
+  assert.equal(toSafeHttpUrl("example.com/path")?.toString(), "https://example.com/path");
+  assert.equal(toSafeHttpUrl("hello@example.com"), null);
+  assert.equal(toSafeHttpUrl("javascript:alert(1)"), null);
+  assert.equal(toSafeHttpUrl("not a url"), null);
 });

@@ -12,6 +12,7 @@ type DeliveryState = 'idle' | 'sending' | 'sent' | 'failed' | 'not_paired';
 
 const barcodeTypes: BarcodeType[] = ['qr', 'ean13', 'ean8', 'code128', 'code39', 'upc_a', 'upc_e', 'pdf417', 'aztec', 'datamatrix'];
 const zoomPresets = [{ label: '5×', value: 1 }, { label: '3×', value: 0.5 }, { label: '1×', value: 0 }];
+const bareWebUrl = /^(?:[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?\.)+[a-z](?:[a-z\d-]{0,61}[a-z\d])?(?::\d{1,5})?(?:\/[^\s<>"'`]*)?$/iu;
 
 function clampZoom(value: number) { return Math.max(0, Math.min(1, Number(value.toFixed(2)))); }
 function zoomLabel(zoom: number) { return `${Math.round((1 + zoom * 4) * 10) / 10}×`; }
@@ -20,7 +21,10 @@ function touchDistance(event: GestureResponderEvent) {
   return first && second ? Math.hypot(second.pageX - first.pageX, second.pageY - first.pageY) : null;
 }
 function toHttpUrl(value: string) {
-  try { const url = new URL(value); return url.protocol === 'https:' || url.protocol === 'http:' ? url : null; } catch { return null; }
+  const candidate = value.trim();
+  const explicitHttp = /^https?:\/\//iu.test(candidate);
+  if (!explicitHttp && !bareWebUrl.test(candidate)) return null;
+  try { const url = new URL(explicitHttp ? candidate : `https://${candidate}`); return url.protocol === 'https:' || url.protocol === 'http:' ? url : null; } catch { return null; }
 }
 
 export default function ScannerScreen() {

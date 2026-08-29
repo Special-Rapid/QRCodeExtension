@@ -5,7 +5,7 @@ button { font: inherit; }
 .app-shell { display: grid; grid-template-columns: 270px minmax(0, 1fr); min-height: 100vh; }
 .rail { display: flex; flex-direction: column; gap: 42px; padding: 38px 22px; border-right: 1px solid #e2e8f2; background: #fff; }
 .brand { display: inline-flex; align-items: center; gap: 11px; color: #0c1739; font-size: 22px; font-weight: 800; letter-spacing: -.035em; text-decoration: none; }
-.brand-mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 9px; background: #1463f3; color: #fff; font-size: 26px; line-height: 1; }
+.brand-mark { display: block; width: 34px; height: 34px; border-radius: 9px; }
 nav { display: grid; gap: 7px; }
 .nav-item { min-height: 48px; border: 0; border-radius: 10px; background: transparent; color: #51617c; cursor: pointer; font-size: 16px; font-weight: 700; text-align: left; padding: 0 16px; }
 .nav-item:hover, .nav-item.active { background: #edf4ff; color: #125ee9; }
