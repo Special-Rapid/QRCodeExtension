@@ -40,9 +40,9 @@ function restoreBackground(previous) {
 
 async function send(environment, message) { return new Promise((resolve) => environment.messageEvent.emit(message, {}, resolve)); }
 
-test("claims a one-time website link as a private connector and opens the web inbox from notifications", async () => {
+test("claims a one-time website link as a private connector and opens a received HTTP(S) URL from its notification", async () => {
   const environment = createChrome();
-  const replies = [reply(200, { publicKey: "AQID" }), reply(201, { connector: { id: "connector-1", token: "connector-secret", code: "AB2CDE3F" } }), reply(200, { status: "active" })];
+  const replies = [reply(200, { publicKey: "AQID" }), reply(201, { connector: { id: "connector-1", token: "connector-secret", code: "AB2CDE3F" } }), reply(200, { status: "active" }), reply(200, { events: [{ id: "event-1", data: "https://example.com/from-phone" }] })];
   environment.fetch = async () => replies.shift();
   const previousRegistration = globalThis.registration;
   const previousWebSocket = globalThis.WebSocket;
@@ -57,11 +57,32 @@ test("claims a one-time website link as a private connector and opens the web in
 
     environment.chrome.notifications.onClicked.emit("qr-scan-handoff:event-1");
     await new Promise((resolve) => setTimeout(resolve, 0));
-    assert.equal(environment.tabs[0].url, "https://qr.snkisk.com/");
+    assert.equal(environment.tabs[0].url, "https://example.com/from-phone");
   } finally {
     restoreBackground(previous);
     globalThis.registration = previousRegistration;
     globalThis.WebSocket = previousWebSocket;
+  }
+});
+
+test("opens the web inbox for text, script URLs, or a missing event", async () => {
+  const environment = createChrome();
+  environment.values["qr-scan-connector"] = { id: "connector-1", token: "connector-secret", code: "AB2CDE3F" };
+  const replies = [
+    reply(200, { events: [{ id: "event-text", data: "ただの文字列" }] }),
+    reply(200, { events: [{ id: "event-script", data: "javascript:alert(1)" }] }),
+    reply(200, { events: [] })
+  ];
+  environment.fetch = async () => replies.shift();
+  const previous = await importBackground(environment, "safe-fallback");
+  try {
+    for (const id of ["event-text", "event-script", "event-missing"]) {
+      environment.chrome.notifications.onClicked.emit(`qr-scan-handoff:${id}`);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    assert.deepEqual(environment.tabs.map((tab) => tab.url), ["https://qr.snkisk.com/", "https://qr.snkisk.com/", "https://qr.snkisk.com/"]);
+  } finally {
+    restoreBackground(previous);
   }
 });
 

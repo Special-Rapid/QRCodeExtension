@@ -8,7 +8,7 @@ chrome.runtime.onStartup.addListener(() => { void connect(); });
 chrome.runtime.onInstalled.addListener(() => { void connect(); });
 chrome.notifications.onClicked.addListener((id) => {
   if (!id.startsWith("qr-scan-handoff:")) return;
-  void chrome.tabs.create({ url: `${API_ORIGIN}/` });
+  void openHandoff(id.slice("qr-scan-handoff:".length));
 });
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   handleMessage(message).then(sendResponse, (error) => sendResponse({ ok: false, error: messageFor(error) }));
@@ -78,6 +78,32 @@ async function connectorIsActive(connector) {
 async function notify(eventId) {
   const notificationId = typeof eventId === "string" && eventId ? `qr-scan-handoff:${eventId}` : `qr-scan-handoff:${crypto.randomUUID()}`;
   await chrome.notifications.create(notificationId, { type: "basic", title: "QR Scan に届きました", message: "新しい読み取り結果があります。", iconUrl: chrome.runtime.getURL("icon-128.png") });
+}
+
+async function openHandoff(eventId) {
+  try {
+    const destination = await handoffUrl(eventId);
+    await chrome.tabs.create({ url: destination ?? `${API_ORIGIN}/` });
+  } catch {
+    await chrome.tabs.create({ url: `${API_ORIGIN}/` });
+  }
+}
+
+async function handoffUrl(eventId) {
+  if (typeof eventId !== "string" || !eventId) return null;
+  const connector = await getConnector();
+  if (!connector) return null;
+  const { events } = await api(`/api/v1/pairs/${encodeURIComponent(connector.code)}/connector-events?connector=${encodeURIComponent(connector.id)}&event=${encodeURIComponent(eventId)}`, { headers: { authorization: `Bearer ${connector.token}` } });
+  const event = Array.isArray(events) ? events.find((item) => item?.id === eventId) : null;
+  return safeHttpUrl(event?.data);
+}
+
+function safeHttpUrl(value) {
+  if (typeof value !== "string") return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch { return null; }
 }
 
 async function clearConnector() { clearSocket(); await chrome.storage.local.remove(CONNECTOR_KEY); }

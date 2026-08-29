@@ -223,9 +223,10 @@ export class PairingRoom extends DurableObject<Env> {
       const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
       const connector = session ? await this.env.DB.prepare("SELECT id, token_hash FROM receiver_connectors WHERE id = ? AND receiver_id = ? AND revoked_at IS NULL").bind(connectorId, session.web.id).first<{ id: string; token_hash: string }>() : null;
       if (!session || session.status !== "paired" || !connector || connector.token_hash !== await hashToken(token)) return json({ error: "unauthorized" }, 401);
+      const requestedEventId = new URL(request.url).searchParams.get("event");
       const events = (await this.getEvents()).filter((event) => event.expiresAt > Date.now());
       await this.saveEvents(events);
-      return json({ events: events.map(publicEvent) });
+      return json({ events: (requestedEventId ? events.filter((event) => event.id === requestedEventId) : events).map(publicEvent) });
     }
     const receiverId = new URL(request.url).searchParams.get("receiver");
     if (!session || session.status !== "paired" || receiverId !== session.web.id) return json({ error: "unauthorized" }, 401);
@@ -371,6 +372,7 @@ export default {
         const connectorId = url.searchParams.get("connector") ?? "";
         if (!connectorId || !bearerToken(request)) return withCors(json({ error: "unauthorized" }, 401), request);
         const forwardUrl = new URL("https://pair.internal/events");
+        forwardUrl.search = url.search;
         const headers = new Headers(request.headers);
         headers.set("x-qr-connector-id", connectorId);
         headers.delete("host");

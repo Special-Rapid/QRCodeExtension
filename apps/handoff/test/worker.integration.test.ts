@@ -141,7 +141,7 @@ describe('handoff Worker integration', () => {
     const web = await created.json<{ code: string }>();
     const webCookie = created.headers.get('set-cookie');
     const claimed = await api(`/api/v1/pairs/${web.code}/claim`, { method: 'POST', body: JSON.stringify({ label: 'Phone' }), headers: { 'content-type': 'application/json' } });
-    const mobile = await claimed.json<{ token: string }>();
+    const mobile = await claimed.json<{ token: string; receiverId: string }>();
     await api(`/api/v1/pairs/${web.code}/confirm`, { method: 'POST', body: JSON.stringify({ role: 'web' }), headers: { 'content-type': 'application/json', cookie: webCookie! } });
     await api(`/api/v1/pairs/${web.code}/confirm`, { method: 'POST', body: JSON.stringify({ role: 'mobile', token: mobile.token }), headers: { 'content-type': 'application/json' } });
 
@@ -160,6 +160,17 @@ describe('handoff Worker integration', () => {
     await expect(health.json()).resolves.toEqual({ status: 'active' });
     const connectorSocket = await api(`/api/v1/pairs/${web.code}/connector-ws?connector=${connector.connector.id}`, { headers: { upgrade: 'websocket', 'sec-websocket-protocol': `qr-scan.${connector.connector.token}` } });
     expect(connectorSocket.status).toBe(101);
+
+    const sent = await api('/api/v1/handoffs', { method: 'POST', body: JSON.stringify({ data: 'https://example.com/connector-event' }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
+    expect(sent.status).toBe(201);
+    const connectorEvents = await api(`/api/v1/pairs/${web.code}/connector-events?connector=${connector.connector.id}`, { headers: { authorization: `Bearer ${connector.connector.token}` } });
+    const { events } = await connectorEvents.json<{ events: Array<{ id: string; data: string }> }>();
+    const handoffEvent = events.find((event) => event.data === 'https://example.com/connector-event');
+    expect(handoffEvent).toBeDefined();
+    const connectorEvent = await api(`/api/v1/pairs/${web.code}/connector-events?connector=${connector.connector.id}&event=${handoffEvent!.id}`, { headers: { authorization: `Bearer ${connector.connector.token}` } });
+    await expect(connectorEvent.json()).resolves.toMatchObject({ events: [{ id: handoffEvent!.id, data: 'https://example.com/connector-event' }] });
+    const missingConnectorEvent = await api(`/api/v1/pairs/${web.code}/connector-events?connector=${connector.connector.id}&event=missing`, { headers: { authorization: `Bearer ${connector.connector.token}` } });
+    await expect(missingConnectorEvent.json()).resolves.toEqual({ events: [] });
 
     const disconnected = await api(`/api/v1/pairs/${web.code}/connector-disconnect`, { method: 'POST', body: JSON.stringify({ extensionId }), headers: { 'content-type': 'application/json', cookie: webCookie! } });
     expect(disconnected.status).toBe(200);

@@ -144,7 +144,7 @@ function renderConnector() {
   const connect = $("#connect-extension");
   const disconnect = $("#disconnect-extension");
   if (state.connector) {
-    $("#connector-description").textContent = "Chrome拡張が高速通知コネクタとして接続済みです。通知を押すと、この受信箱を開きます。";
+    $("#connector-description").textContent = "Chrome拡張が高速通知コネクタとして接続済みです。通知を押すと、URLは直接開き、文字列はこの受信箱を開きます。";
     connect.hidden = true;
     disconnect.hidden = false;
     return;
