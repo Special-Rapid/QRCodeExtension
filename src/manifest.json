@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "表示中のページまたは画像ファイルにあるQRコードを、カメラなしでローカル解析します。",
   "minimum_chrome_version": "121",
-  "permissions": ["activeTab", "notifications", "storage"],
+  "permissions": ["activeTab", "scripting", "notifications", "storage"],
   "host_permissions": ["https://qr.snkisk.com/*"],
   "background": {
     "service_worker": "handoff-background.js",

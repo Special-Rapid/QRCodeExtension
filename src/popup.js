@@ -1,4 +1,5 @@
 import { decodeImageSource } from "./qr-decoder.js";
+import { extractHttpUrls, mergeDecodedValues } from "./url-text.js";
 
 const scanPageButton = document.querySelector("#scan-page");
 const scanButtonContent = document.querySelector(".button-content");
@@ -13,11 +14,17 @@ fileInput.addEventListener("change", scanSelectedImage);
 scanVisiblePage();
 
 async function scanVisiblePage() {
-  setBusy(true, "このページに表示されているQRコードを解析しています…");
+  setBusy(true, "このページのQRコードとURL文字列を解析しています…");
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const screenshot = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
-    showDecoded(await decodeImageSource(screenshot));
+    if (!tab?.id) throw new Error("active_tab_missing");
+    const [screenshot, pageText] = await Promise.all([
+      chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" }),
+      readPageText(tab.id).catch(() => "")
+    ]);
+    const qrResults = await decodeImageSource(screenshot);
+    const textResults = extractHttpUrls(pageText).map((data) => ({ data }));
+    showDecoded(mergeDecodedValues(qrResults, textResults));
   } catch (error) {
     showError(captureErrorMessage(error));
   } finally {
@@ -53,13 +60,13 @@ function setBusy(isBusy, message = "") {
 function showDecoded(decoded) {
   if (decoded.length === 0) {
     results.hidden = true;
-    setStatus("QRコードが見つかりませんでした。QRコードが大きく表示されているか確認するか、画像を選択してください。", "error");
+    setStatus("QRコードまたはURL文字列が見つかりませんでした。ページ内の文字列を確認するか、画像を選択してください。", "error");
     return;
   }
 
   resultList.replaceChildren(...decoded.map(createResultItem));
   results.hidden = false;
-  setStatus(`${decoded.length}件のQRコードを読み取りました。データはこの端末から送信されません。`, "success");
+  setStatus(`${decoded.length}件のQRコード・URL文字列を読み取りました。データはこの端末から送信されません。`, "success");
 }
 
 function createResultItem(result) {
@@ -104,6 +111,14 @@ function isHttpUrl(value) {
   } catch {
     return false;
   }
+}
+
+async function readPageText(tabId) {
+  const [injection] = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => `${globalThis.getSelection?.()?.toString() ?? ""}\n${document.body?.innerText ?? ""}`.slice(0, 200_000)
+  });
+  return typeof injection?.result === "string" ? injection.result : "";
 }
 
 function readFile(file) {
