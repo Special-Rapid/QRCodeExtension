@@ -13,7 +13,7 @@ function createNode() {
   };
 }
 
-function createEnvironment({ captureVisibleTab, pageText = "" }) {
+function createEnvironment({ captureVisibleTab }) {
   const scanPageButton = createNode();
   const scanButtonContent = createNode();
   const scanLoading = createNode();
@@ -21,7 +21,6 @@ function createEnvironment({ captureVisibleTab, pageText = "" }) {
   const status = createNode();
   const results = createNode();
   const resultList = { ...createNode(), replaceChildren() {} };
-  const scripts = [];
   const elements = new Map([
     ["#scan-page", scanPageButton],
     [".button-content", scanButtonContent],
@@ -34,13 +33,11 @@ function createEnvironment({ captureVisibleTab, pageText = "" }) {
 
   return {
     elements: { scanPageButton, scanButtonContent, scanLoading, fileInput, status, results },
-    scripts,
     chrome: {
       tabs: {
         query: async () => [{ id: 71, windowId: 17 }],
         captureVisibleTab
-      },
-      scripting: { executeScript: async (details) => { scripts.push(details); return [{ result: pageText }]; } }
+      }
     },
     document: {
       querySelector: (selector) => elements.get(selector),
@@ -112,11 +109,9 @@ test("automatically captures the active tab and replaces the loader when decodin
     finishCapture("data:image/png;base64,AA==");
     await waitFor(() => environment.elements.scanPageButton.disabled === false);
     assert.equal(capturedWindowId, 17);
-    assert.equal(environment.scripts.length, 1);
-    assert.deepEqual(environment.scripts[0].target, { tabId: 71 });
     assert.equal(environment.elements.scanButtonContent.hidden, false);
     assert.equal(environment.elements.scanLoading.hidden, true);
-    assert.match(environment.elements.status.textContent, /QRコードまたはURL文字列が見つかりませんでした/);
+    assert.match(environment.elements.status.textContent, /QRコードが見つかりませんでした/);
   } finally {
     restoreEnvironment(previous);
   }
