@@ -72,6 +72,14 @@ export function dedupeCandidates(candidates: ScanCandidate[]) {
   }).map((candidate, index) => ({ ...candidate, id: `${candidate.type}-${index + 1}` }));
 }
 
+export function candidateSignature(candidates: ScanCandidate[]) {
+  return candidates
+    .map((candidate) => candidate.url ?? candidate.data)
+    .filter(Boolean)
+    .sort()
+    .join('\u001f');
+}
+
 function barcodeBounds(bounds: RawBarcodeCandidate['bounds']): CandidateBounds | null {
   const origin = bounds?.origin;
   const size = bounds?.size;

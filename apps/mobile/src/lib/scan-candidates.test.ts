@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
-import { collectBarcodeCandidates, collectOcrUrlCandidates, toHttpUrl } from './scan-candidates.ts';
+import { candidateSignature, collectBarcodeCandidates, collectOcrUrlCandidates, toHttpUrl } from './scan-candidates.ts';
 
 test('normalizes safe scheme-less URL candidates and rejects unsafe values', () => {
   assert.equal(toHttpUrl('example.com/path')?.toString(), 'https://example.com/path');
@@ -24,4 +24,14 @@ test('extracts only safe URL text candidates from OCR blocks and retains fixed b
   ]);
   assert.deepEqual(candidates.map((candidate) => candidate.data), ['https://example.com/path']);
   assert.deepEqual(candidates[0].bounds, { x: 20, y: 40, width: 200, height: 36 });
+});
+
+test('uses the normalized URL set as an order-independent live OCR stability signature', () => {
+  const first = collectOcrUrlCandidates([
+    { text: 'first.example second.example', x: 0, y: 0, width: 200, height: 20 },
+  ]);
+  const second = collectOcrUrlCandidates([
+    { text: 'second.example first.example', x: 10, y: 10, width: 200, height: 20 },
+  ]);
+  assert.equal(candidateSignature(first), candidateSignature(second));
 });

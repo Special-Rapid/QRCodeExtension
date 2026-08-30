@@ -1,17 +1,18 @@
 import { CameraView, type BarcodeScanningResult, type BarcodeType, useCameraPermissions } from 'expo-camera';
 import * as Clipboard from 'expo-clipboard';
+import { File } from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { type GestureResponderEvent, Linking, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { isOcrAvailable, recognizeUrlText } from '../../modules/qr-scan-ocr';
+import { canCommitDetection, nextDetectionEpoch } from '../lib/detection-coordinator';
 import { getHandoffReceipt, getMobileDevices, loadMobileIdentity, refreshMobileIdentityLabel, sendHandoff, type HandoffTarget } from '../lib/handoff';
-import { collectBarcodeCandidates, collectOcrUrlCandidates, toHttpUrl, type ScanCandidate } from '../lib/scan-candidates';
+import { candidateSignature, collectBarcodeCandidates, collectOcrUrlCandidates, toHttpUrl, type ScanCandidate } from '../lib/scan-candidates';
 
 type DeliveryState = 'idle' | 'sending' | 'waiting' | 'sent' | 'expired' | 'failed' | 'not_paired';
-type ScannerPhase = 'ready' | 'acquiring' | 'recognizing' | 'picking' | 'result';
-type ScanMode = 'barcode' | 'text';
+type ScannerPhase = 'ready' | 'acquiring' | 'picking' | 'result';
 type CapturedFrame = { width: number; height: number };
 
 const barcodeTypes: BarcodeType[] = ['qr', 'ean13', 'ean8', 'code128', 'code39', 'upc_a', 'upc_e', 'pdf417', 'aztec', 'datamatrix'];
@@ -36,7 +37,6 @@ export default function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [zoom, setZoom] = useState(0);
   const [torch, setTorch] = useState(false);
-  const [mode, setMode] = useState<ScanMode>('barcode');
   const [phase, setPhase] = useState<ScannerPhase>('ready');
   const [result, setResult] = useState<ScanCandidate | null>(null);
   const [candidates, setCandidates] = useState<ScanCandidate[]>([]);
@@ -50,9 +50,15 @@ export default function ScannerScreen() {
   const [actionNotice, setActionNotice] = useState('');
   const scanLocked = useRef(false);
   const cameraRef = useRef<CameraView | null>(null);
-  const acquisition = useRef<{ scans: BarcodeScanningResult[]; timer: ReturnType<typeof setTimeout>; generation: number } | null>(null);
+  const acquisition = useRef<{ scans: BarcodeScanningResult[]; timer: ReturnType<typeof setTimeout>; generation: number; detectionEpoch: number } | null>(null);
   const autoDeliveryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const receiptTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveOcrTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveOcrBusy = useRef(false);
+  const liveOcrSignature = useRef<string | null>(null);
+  const liveOcrMatches = useRef(0);
+  const phaseRef = useRef<ScannerPhase>('ready');
+  const detectionEpoch = useRef(0);
   const scanGeneration = useRef(0);
   const pinch = useRef<{ distance: number; zoom: number } | null>(null);
   const insets = useSafeAreaInsets();
@@ -65,7 +71,13 @@ export default function ScannerScreen() {
     autoDeliveryTimer.current = null;
     if (receiptTimer.current) clearTimeout(receiptTimer.current);
     receiptTimer.current = null;
+    if (liveOcrTimer.current) clearTimeout(liveOcrTimer.current);
+    liveOcrTimer.current = null;
+    liveOcrSignature.current = null;
+    liveOcrMatches.current = 0;
   };
+
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
 
   useEffect(() => () => {
     scanGeneration.current += 1;
@@ -101,6 +113,7 @@ export default function ScannerScreen() {
 
   const scanAgain = (notice = '') => {
     scanGeneration.current += 1;
+    detectionEpoch.current = nextDetectionEpoch(detectionEpoch.current);
     clearScanTimers();
     scanLocked.current = true;
     setCameraReady(false);
@@ -163,11 +176,11 @@ export default function ScannerScreen() {
     }
   };
 
-  const freezePreview = async () => {
+  const freezePreview = useCallback(async () => {
     if (process.env.EXPO_OS !== 'web') await cameraRef.current?.pausePreview().catch(() => undefined);
-  };
+  }, []);
 
-  const beginPicker = async (nextCandidates: ScanCandidate[], frame: CapturedFrame | null, generation: number) => {
+  const beginPicker = useCallback(async (nextCandidates: ScanCandidate[], frame: CapturedFrame | null, generation: number) => {
     if (generation !== scanGeneration.current) return false;
     await freezePreview();
     if (generation !== scanGeneration.current) return false;
@@ -178,11 +191,11 @@ export default function ScannerScreen() {
     setActionNotice('候補を選んでからPCへ届けます。');
     if (process.env.EXPO_OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     return true;
-  };
+  }, [freezePreview]);
 
   const finalizeBarcodeAcquisition = async (generation: number) => {
     const activeAcquisition = acquisition.current;
-    if (!activeAcquisition || activeAcquisition.generation !== generation || generation !== scanGeneration.current) return;
+    if (!activeAcquisition || activeAcquisition.generation !== generation || generation !== scanGeneration.current || !canCommitDetection({ claimEpoch: activeAcquisition.detectionEpoch, currentEpoch: detectionEpoch.current, phase: phaseRef.current, expectedPhase: 'acquiring', locked: scanLocked.current })) return;
     const scans = activeAcquisition.scans;
     acquisition.current = null;
     scanLocked.current = true;
@@ -209,46 +222,72 @@ export default function ScannerScreen() {
   };
 
   const onBarcodeScanned = (scan: BarcodeScanningResult) => {
-    if (mode !== 'barcode' || scanLocked.current || !['ready', 'acquiring'].includes(phase)) return;
+    if (scanLocked.current || !['ready', 'acquiring'].includes(phase)) return;
     if (!acquisition.current) {
       const generation = scanGeneration.current;
+      const nextEpoch = nextDetectionEpoch(detectionEpoch.current);
+      detectionEpoch.current = nextEpoch;
       const timer = setTimeout(() => { void finalizeBarcodeAcquisition(generation); }, 600);
-      acquisition.current = { scans: [], timer, generation };
+      acquisition.current = { scans: [], timer, generation, detectionEpoch: nextEpoch };
       setPhase('acquiring');
       setActionNotice('候補を確認しています…');
     }
     acquisition.current.scans.push(scan);
   };
 
-  const captureTextLinks = async () => {
-    if (!cameraReady || phase !== 'ready') return;
-    if (!isOcrAvailable()) {
-      setActionNotice('文字リンクの読み取りには、更新版のQR Scanアプリが必要です。');
-      return;
-    }
-    const generation = scanGeneration.current;
-    scanLocked.current = true;
-    setPhase('recognizing');
-    setActionNotice('画像を端末内で読み取っています…');
-    try {
-      const picture = await cameraRef.current?.takePictureAsync({ quality: 0.9, shutterSound: false });
-      if (!picture) throw new Error('capture_unavailable');
-      if (generation !== scanGeneration.current) return;
-      await freezePreview();
-      if (generation !== scanGeneration.current) return;
-      const recognition = await recognizeUrlText(picture.uri);
-      if (generation !== scanGeneration.current) return;
-      const nextCandidates = collectOcrUrlCandidates(recognition.blocks);
-      if (nextCandidates.length === 0) {
-        scanAgain('URLとして読める文字リンクが見つかりませんでした。');
+  useEffect(() => {
+    if (!cameraReady || !pairingReady || phase !== 'ready' || !isOcrAvailable()) return;
+    let active = true;
+    const schedule = (delay: number) => {
+      if (!active) return;
+      liveOcrTimer.current = setTimeout(() => { void scanLiveText(); }, delay);
+    };
+    const scanLiveText = async () => {
+      if (!active || scanLocked.current || phaseRef.current !== 'ready') return;
+      if (liveOcrBusy.current) {
+        schedule(250);
         return;
       }
-      await beginPicker(nextCandidates, { width: recognition.width, height: recognition.height }, generation);
-    } catch (error) {
-      if (generation !== scanGeneration.current) return;
-      scanAgain(error instanceof Error && error.message ? error.message : '文字リンクを読み取れませんでした。');
-    }
-  };
+      const generation = scanGeneration.current;
+      const snapshotEpoch = detectionEpoch.current;
+      liveOcrBusy.current = true;
+      let snapshotUri: string | null = null;
+      try {
+        const picture = await cameraRef.current?.takePictureAsync({ quality: 0.45, shutterSound: false });
+        snapshotUri = picture?.uri ?? null;
+        if (!picture || !active || generation !== scanGeneration.current || !canCommitDetection({ claimEpoch: snapshotEpoch, currentEpoch: detectionEpoch.current, phase: phaseRef.current, expectedPhase: 'ready', locked: scanLocked.current })) return;
+        const recognition = await recognizeUrlText(picture.uri);
+        if (!active || generation !== scanGeneration.current || !canCommitDetection({ claimEpoch: snapshotEpoch, currentEpoch: detectionEpoch.current, phase: phaseRef.current, expectedPhase: 'ready', locked: scanLocked.current })) return;
+        const nextCandidates = collectOcrUrlCandidates(recognition.blocks);
+        const signature = candidateSignature(nextCandidates);
+        if (!signature) {
+          liveOcrSignature.current = null;
+          liveOcrMatches.current = 0;
+          return;
+        }
+        liveOcrMatches.current = liveOcrSignature.current === signature ? liveOcrMatches.current + 1 : 1;
+        liveOcrSignature.current = signature;
+        if (liveOcrMatches.current < 2) return;
+        detectionEpoch.current = nextDetectionEpoch(detectionEpoch.current);
+        scanLocked.current = true;
+        await beginPicker(nextCandidates, { width: recognition.width, height: recognition.height }, generation);
+      } catch {
+        // A transient preview frame failure must not interrupt QR scanning.
+      } finally {
+        if (snapshotUri) {
+          try { new File(snapshotUri).delete(); } catch { /* cache cleanup is best effort */ }
+        }
+        liveOcrBusy.current = false;
+        if (active && generation === scanGeneration.current && !scanLocked.current && phaseRef.current === 'ready') schedule(650);
+      }
+    };
+    schedule(450);
+    return () => {
+      active = false;
+      if (liveOcrTimer.current) clearTimeout(liveOcrTimer.current);
+      liveOcrTimer.current = null;
+    };
+  }, [beginPicker, cameraReady, cameraSession, pairingReady, phase]);
 
   const selectedCandidate = candidates.find((candidate) => candidate.id === selectedCandidateId) ?? null;
   const displayCandidate = result ?? selectedCandidate;
@@ -269,24 +308,12 @@ export default function ScannerScreen() {
     setActionNotice('PCへ送信しています…');
     void sendCandidate(selectedCandidate, scanGeneration.current);
   };
-  const switchMode = () => {
-    const nextMode = mode === 'barcode' ? 'text' : 'barcode';
-    if (phase !== 'ready') {
-      setMode(nextMode);
-      scanAgain(nextMode === 'text' ? '文字リンクを撮影して読み取れます。' : 'QRコードを自動で読み取れます。');
-    }
-    else {
-      setMode(nextMode);
-      setActionNotice(nextMode === 'text' ? '文字リンクを撮影して読み取れます。' : 'QRコードを自動で読み取れます。');
-    }
-  };
-
   if (!permission) return <View style={styles.center}><Text style={styles.loadingText}>カメラを準備しています…</Text></View>;
   if (!permission.granted) {
     const permanentlyDenied = !permission.canAskAgain;
     return <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.permissionContainer}>
       <Text style={styles.permissionTitle}>カメラへのアクセスが必要です</Text>
-      <Text selectable style={styles.permissionBody}>QRコードとバーコードをこの端末内で読み取るためにだけ使用します。画像は送信しません。</Text>
+      <Text selectable style={styles.permissionBody}>QRコード・バーコード・印刷URLをこの端末内で読み取るためにだけ使用します。画像は送信しません。</Text>
       {permanentlyDenied && <Text selectable style={styles.permissionBody}>カメラを許可するには、端末の設定でこのアプリのカメラアクセスをオンにしてください。</Text>}
       <Pressable style={styles.primaryButton} onPress={permanentlyDenied ? Linking.openSettings : requestPermission}><Text style={styles.primaryButtonText}>{permanentlyDenied ? '設定を開く' : 'カメラを許可'}</Text></Pressable>
     </ScrollView>;
@@ -300,13 +327,12 @@ export default function ScannerScreen() {
     onTouchMove={movePinch}
     onTouchEnd={endPinch}
     onTouchCancel={endPinch}>
-    <CameraView ref={cameraRef} key={cameraSession} facing="back" enableTorch={torch} zoom={zoom} barcodeScannerSettings={{ barcodeTypes }} onCameraReady={() => { setCameraReady(true); if (phase === 'ready') scanLocked.current = false; }} onBarcodeScanned={mode === 'barcode' && ['ready', 'acquiring'].includes(phase) && pairingReady && cameraReady ? onBarcodeScanned : undefined} style={StyleSheet.absoluteFill} />
+    <CameraView ref={cameraRef} key={cameraSession} facing="back" enableTorch={torch} zoom={zoom} barcodeScannerSettings={{ barcodeTypes }} onCameraReady={() => { setCameraReady(true); if (phase === 'ready') scanLocked.current = false; }} onBarcodeScanned={['ready', 'acquiring'].includes(phase) && pairingReady && cameraReady ? onBarcodeScanned : undefined} style={StyleSheet.absoluteFill} />
     <View pointerEvents="none" style={styles.cameraTint} />
     <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
       <View><Text style={styles.brand}>QR Scan</Text><Text style={styles.deliveryPill}>{result ? deliveryCopy : paired ? 'PCに自動送信' : 'PCと連携して使う'}</Text></View>
       <View style={styles.topActions}>
         <Pressable accessibilityLabel="ライト" style={styles.topAction} onPress={() => setTorch((value) => !value)}><Text style={styles.topActionText}>{torch ? '☀' : '◐'}</Text></Pressable>
-        <Pressable accessibilityLabel="文字リンクモード" style={[styles.topAction, mode === 'text' && styles.topActionActive]} onPress={switchMode}><Text style={styles.topActionText}>Aa</Text></Pressable>
         <Pressable accessibilityLabel="PC連携設定" style={styles.topAction} onPress={() => router.push('/pair')}><Text style={styles.topActionText}>PC</Text></Pressable>
       </View>
     </View>
@@ -324,9 +350,8 @@ export default function ScannerScreen() {
       if (!position) return null;
       return <Pressable key={candidate.id} accessibilityLabel={`候補 ${index + 1} を選ぶ`} style={[styles.candidateMarker, { left: Math.max(12, Math.min(viewport.width - 48, position.x)), top: Math.max(insets.top + 64, Math.min(viewport.height - 220, position.y)) }, candidate.id === selectedCandidate.id && styles.candidateMarkerActive]} onPress={() => setSelectedCandidateId(candidate.id)}><Text style={styles.candidateMarkerText}>{index + 1}</Text></Pressable>;
     }) : null}
-    {['ready', 'acquiring', 'recognizing'].includes(phase) && <View style={[styles.scanHint, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-      <Text style={styles.scanHintText}>{!pairingReady ? 'PC連携の状態を確認しています…' : !cameraReady ? 'カメラを再開しています…' : phase === 'acquiring' ? '候補を確認しています…' : phase === 'recognizing' ? '画像を端末内で読み取っています…' : mode === 'text' ? '文字リンクを枠に合わせてください' : '枠に合わせると、自動でPCへ届けます'}</Text>
-      {mode === 'text' && phase === 'ready' && <Pressable accessibilityLabel="文字リンクを読み取る" style={styles.textCaptureAction} onPress={() => { void captureTextLinks(); }}><Text style={styles.textCaptureActionText}>文字リンクを読み取る</Text></Pressable>}
+    {['ready', 'acquiring'].includes(phase) && <View style={[styles.scanHint, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+      <Text style={styles.scanHintText}>{!pairingReady ? 'PC連携の状態を確認しています…' : !cameraReady ? 'カメラを再開しています…' : phase === 'acquiring' ? '候補を確認しています…' : isOcrAvailable() ? 'QRコード・印刷URLを枠に合わせてください' : 'QRコードを枠に合わせてください'}</Text>
       {actionNotice && phase === 'ready' ? <Text selectable style={styles.scanNotice}>{actionNotice}</Text> : null}
     </View>}
     {phase === 'picking' && selectedCandidate && <View style={[styles.resultOverlay, { paddingBottom: Math.max(insets.bottom, 16) }]}><View style={styles.resultCard}>
@@ -358,9 +383,9 @@ const styles = StyleSheet.create({
   primaryButton: { minHeight: 52, alignItems: 'center', justifyContent: 'center', borderRadius: 13, borderCurve: 'continuous', backgroundColor: '#1463F3' }, primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
   cameraTint: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(2, 10, 25, .18)' }, topBar: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 20 },
   brand: { color: '#FFFFFF', fontSize: 27, fontWeight: '800', letterSpacing: -0.8, textShadowColor: 'rgba(0, 0, 0, .45)', textShadowRadius: 8 }, deliveryPill: { alignSelf: 'flex-start', marginTop: 7, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 99, overflow: 'hidden', backgroundColor: 'rgba(5, 20, 52, .72)', color: '#AFCBFF', fontSize: 12, fontWeight: '800' },
-  topActions: { flexDirection: 'row', gap: 9 }, topAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(203, 223, 255, .36)', borderRadius: 22, backgroundColor: 'rgba(5, 20, 52, .76)' }, topActionActive: { borderColor: '#A8CDFF', backgroundColor: 'rgba(37, 118, 243, .86)' }, topActionText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+  topActions: { flexDirection: 'row', gap: 9 }, topAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(203, 223, 255, .36)', borderRadius: 22, backgroundColor: 'rgba(5, 20, 52, .76)' }, topActionText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
   viewfinder: { position: 'absolute', top: '26%', left: '12%', right: '18%', bottom: '31%' }, corner: { position: 'absolute', width: 38, height: 38, borderColor: '#FFFFFF', borderRadius: 8, borderCurve: 'continuous' }, cornerTopLeft: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3 }, cornerTopRight: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3 }, cornerBottomLeft: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3 }, cornerBottomRight: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3 },
   zoomRail: { position: 'absolute', right: 16, alignItems: 'center', gap: 7, paddingVertical: 12, paddingHorizontal: 8, borderWidth: 1, borderColor: 'rgba(166, 199, 255, .25)', borderRadius: 22, backgroundColor: 'rgba(4, 18, 47, .72)' }, zoomPreset: { width: 38, minHeight: 28, alignItems: 'center', justifyContent: 'center' }, zoomPresetText: { color: '#B9CAE9', fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] }, zoomPresetTextActive: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' }, zoomTrack: { width: 2, height: 72, borderRadius: 2, backgroundColor: 'rgba(255, 255, 255, .36)', overflow: 'visible' }, zoomThumb: { position: 'absolute', left: -5, width: 12, height: 12, borderRadius: 6, backgroundColor: '#4C91FF', borderWidth: 2, borderColor: '#DCEBFF' }, currentZoom: { color: '#FFFFFF', fontSize: 12, fontWeight: '900', fontVariant: ['tabular-nums'] },
-  scanHint: { position: 'absolute', left: 24, right: 90, bottom: 18, alignItems: 'flex-start', gap: 9 }, scanHintText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700', textShadowColor: 'rgba(0, 0, 0, .65)', textShadowRadius: 7 }, scanNotice: { color: '#C7DBFF', fontSize: 12, lineHeight: 17, textShadowColor: 'rgba(0, 0, 0, .65)', textShadowRadius: 7 }, textCaptureAction: { minHeight: 44, paddingHorizontal: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#A8CDFF', borderRadius: 14, borderCurve: 'continuous', backgroundColor: 'rgba(18, 94, 220, .94)' }, textCaptureActionText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' }, candidateMarker: { position: 'absolute', zIndex: 3, width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFFFFF', borderRadius: 18, backgroundColor: 'rgba(5, 20, 52, .86)' }, candidateMarkerActive: { borderColor: '#BBD9FF', backgroundColor: '#2476F3', transform: [{ scale: 1.12 }] }, candidateMarkerText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900', fontVariant: ['tabular-nums'] },
+  scanHint: { position: 'absolute', left: 24, right: 90, bottom: 18, alignItems: 'flex-start', gap: 9 }, scanHintText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700', textShadowColor: 'rgba(0, 0, 0, .65)', textShadowRadius: 7 }, scanNotice: { color: '#C7DBFF', fontSize: 12, lineHeight: 17, textShadowColor: 'rgba(0, 0, 0, .65)', textShadowRadius: 7 }, candidateMarker: { position: 'absolute', zIndex: 3, width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFFFFF', borderRadius: 18, backgroundColor: 'rgba(5, 20, 52, .86)' }, candidateMarkerActive: { borderColor: '#BBD9FF', backgroundColor: '#2476F3', transform: [{ scale: 1.12 }] }, candidateMarkerText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900', fontVariant: ['tabular-nums'] },
   resultOverlay: { position: 'absolute', left: 16, right: 16, bottom: 0 }, resultCard: { gap: 9, padding: 15, borderWidth: 1, borderColor: 'rgba(185, 209, 255, .44)', borderRadius: 20, borderCurve: 'continuous', backgroundColor: 'rgba(5, 18, 46, .94)', boxShadow: '0 12px 32px rgba(0, 0, 0, .3)' }, resultHeader: { flexDirection: 'row', alignItems: 'center', gap: 7 }, deliveryDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#9AA9C1' }, selectionDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#79AEFF' }, deliveryDotSent: { backgroundColor: '#46D58E' }, deliveryDotFailed: { backgroundColor: '#FF7777' }, deliveryText: { flex: 1, color: '#C8D8F4', fontSize: 13, fontWeight: '800' }, scanAgain: { minHeight: 32, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center' }, scanAgainText: { color: '#8CB9FF', fontSize: 13, fontWeight: '800' }, candidateNavigator: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 9, paddingVertical: 2 }, candidateNavButton: { minHeight: 32, minWidth: 54, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#567EBA', borderRadius: 10, borderCurve: 'continuous' }, candidateNavText: { color: '#CFE1FF', fontSize: 12, fontWeight: '800' }, candidateCount: { color: '#FFFFFF', fontSize: 13, fontWeight: '900', fontVariant: ['tabular-nums'] }, host: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' }, value: { color: '#D4DEF1', fontSize: 13, lineHeight: 18, fontFamily: process.env.EXPO_OS === 'ios' ? 'Menlo' : 'monospace' }, actionNotice: { color: '#AFCBFF', fontSize: 12, lineHeight: 17 }, actionNoticeError: { color: '#FFB0B0' }, resultActions: { flexDirection: 'row', gap: 9, marginTop: 2 }, openAction: { flex: 1, minHeight: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderCurve: 'continuous', backgroundColor: '#2476F3' }, openActionText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' }, copyAction: { flex: 1, minHeight: 42, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#789ED6', borderRadius: 12, borderCurve: 'continuous' }, copyActionText: { color: '#CFE1FF', fontSize: 14, fontWeight: '900' }, pairAction: { flex: 1, minHeight: 42, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#789ED6', borderRadius: 12, borderCurve: 'continuous' },
 });
