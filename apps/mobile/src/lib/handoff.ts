@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import * as Device from 'expo-device';
 
 const MOBILE_IDENTITY_KEY = 'qr-scan-handoff-credential';
 const HANDOFF_ORIGIN = process.env.EXPO_PUBLIC_HANDOFF_ORIGIN ?? 'https://qr.snkisk.com';
@@ -25,6 +26,15 @@ export type PairedPcDevice = {
   createdAt: number;
 };
 
+export type HandoffTarget = { code: string; eventId: string; label: string };
+export type HandoffReceipt = {
+  total: number;
+  acknowledged: number;
+  pending: number;
+  expired: number;
+  handoffs: (HandoffTarget & { status?: 'pending' | 'acknowledged' | 'expired' })[];
+};
+
 type ApiError = Error & { code?: string };
 
 export async function claimPair(code: string, label: string, identity?: MobileIdentity | null): Promise<PairCredential> {
@@ -39,7 +49,7 @@ export async function confirmPair(credential: PairCredential) {
     method: 'POST',
     body: { role: 'mobile', token: credential.token },
   });
-  if (response.status === 'paired') await saveMobileIdentity({ receiverId: credential.receiverId, token: credential.token, label: 'このスマホ' });
+  if (response.status === 'paired') await saveMobileIdentity({ receiverId: credential.receiverId, token: credential.token, label: mobileDeviceLabel() });
   return response as { status: PairCredential['status']; phrase: string; peerConfirmed: boolean };
 }
 
@@ -48,11 +58,11 @@ export async function getPairStatus(credential: PairCredential) {
     headers: { Authorization: `Bearer ${credential.token}`, 'X-QR-Role': 'mobile' },
   });
   const updated = { ...credential, ...response, role: 'mobile' as const };
-  if (updated.status === 'paired') await saveMobileIdentity({ receiverId: updated.receiverId, token: updated.token, label: 'このスマホ' });
+  if (updated.status === 'paired') await saveMobileIdentity({ receiverId: updated.receiverId, token: updated.token, label: mobileDeviceLabel() });
   return updated as PairCredential & { peerLabel: string | null; peerConfirmed: boolean; selfConfirmed: boolean };
 }
 
-export async function sendHandoff(data: string) {
+export async function sendHandoff(data: string): Promise<HandoffReceipt> {
   const identity = await loadMobileIdentity();
   if (!identity) throw apiError('not_paired');
   try {
@@ -65,6 +75,16 @@ export async function sendHandoff(data: string) {
     if (error instanceof Error && (error as ApiError).code === 'unauthorized') await clearMobileIdentity();
     throw error;
   }
+}
+
+export async function getHandoffReceipt(handoffs: HandoffTarget[]): Promise<HandoffReceipt> {
+  const identity = await loadMobileIdentity();
+  if (!identity) throw apiError('not_paired');
+  return request('/api/v1/handoffs/status', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${identity.token}` },
+    body: { handoffs },
+  });
 }
 
 export async function getMobileDevices(identity: MobileIdentity) {
@@ -92,6 +112,24 @@ export function loadMobileIdentity() {
       return null;
     }
   });
+}
+
+export function mobileDeviceLabel() {
+  const name = Device.deviceName?.trim() || Device.modelName?.trim();
+  return name ? `${name.slice(0, 36)} の QR Scan` : 'このスマホの QR Scan';
+}
+
+export async function refreshMobileIdentityLabel(identity: MobileIdentity) {
+  const label = mobileDeviceLabel();
+  if (identity.label === label) return identity;
+  await request('/api/v1/mobile/label', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${identity.token}` },
+    body: { label },
+  });
+  const updated = { ...identity, label };
+  await saveMobileIdentity(updated);
+  return updated;
 }
 
 export function clearMobileIdentity() {
@@ -125,6 +163,7 @@ function apiError(code: string): ApiError {
     already_claimed: 'このコードは別のスマホで入力済みです。',
     unauthorized: '連携情報を確認できませんでした。もう一度連携してください。',
     not_paired: '先にPCと連携してください。',
+    delivery_failed: 'PCへの送信を完了できませんでした。もう一度試してください。',
   } as Record<string, string>)[code] ?? 'PC連携を完了できませんでした。';
   return Object.assign(new Error(message), { code });
 }

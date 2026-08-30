@@ -32,6 +32,7 @@ type HandoffEvent = {
   data: string;
   createdAt: number;
   expiresAt: number;
+  acknowledgedAt?: number;
 };
 
 type PushSubscriptionInput = {
@@ -74,6 +75,8 @@ export class PairingRoom extends DurableObject<Env> {
     if (request.method === "POST" && url.pathname === "/revoke") return this.revoke(body);
     if (request.method === "POST" && url.pathname === "/disconnect-connectors") return this.disconnectConnectors();
     if (request.method === "POST" && url.pathname === "/handoffs") return this.createHandoff(body);
+    if (request.method === "POST" && url.pathname === "/ack") return this.acknowledgeHandoff(request, body);
+    if (request.method === "POST" && url.pathname === "/handoff-status") return this.handoffStatus(body);
     return json({ error: "not_found" }, 404);
   }
 
@@ -170,7 +173,8 @@ export class PairingRoom extends DurableObject<Env> {
       session.status = "expired";
       await this.saveSession(session);
     }
-    return json({ status: session.status, code: session.code, phrase: session.phrase, expiresAt: session.expiresAt, receiverId: receiver.id, selfConfirmed: receiver.confirmed, peerLabel: role === "web" ? session.mobile?.label ?? null : session.web.label, peerConfirmed: role === "web" ? session.mobile?.confirmed ?? false : session.web.confirmed });
+    const mobileLabel = session.mobile ? (await this.env.DB.prepare("SELECT label FROM receivers WHERE id = ? AND kind = 'mobile' AND revoked_at IS NULL").bind(session.mobile.id).first<{ label: string }>())?.label ?? session.mobile.label : null;
+    return json({ status: session.status, code: session.code, phrase: session.phrase, expiresAt: session.expiresAt, receiverId: receiver.id, selfConfirmed: receiver.confirmed, peerLabel: role === "web" ? mobileLabel : session.web.label, peerConfirmed: role === "web" ? session.mobile?.confirmed ?? false : session.web.confirmed });
   }
 
   private async createHandoff(body: Record<string, unknown>) {
@@ -190,9 +194,44 @@ export class PairingRoom extends DurableObject<Env> {
     } else if (route === "connector") {
       this.broadcast({ type: "handoff", eventId: event.id }, "connector");
     } else {
-      this.ctx.waitUntil(this.dispatchHandoffPush(session.web.id, event.id));
+      this.ctx.waitUntil(this.dispatchHandoffPush(session.web.id, session.code, event.id));
     }
     return json({ event: publicEvent(event) }, 201);
+  }
+
+  private async acknowledgeHandoff(request: Request, body: Record<string, unknown>) {
+    const session = await this.getSession();
+    if (!session || session.status !== "paired") return json({ error: "not_paired" }, 409);
+    const eventId = typeof body.eventId === "string" ? body.eventId : "";
+    if (!eventId) return json({ error: "invalid_request" }, 400);
+    const connectorId = request.headers.get("x-qr-connector-id") ?? "";
+    if (connectorId) {
+      const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
+      const connector = await this.env.DB.prepare("SELECT id, token_hash FROM receiver_connectors WHERE id = ? AND receiver_id = ? AND revoked_at IS NULL").bind(connectorId, session.web.id).first<{ id: string; token_hash: string }>();
+      if (!connector || connector.token_hash !== await hashToken(token)) return json({ error: "unauthorized" }, 401);
+    } else {
+      const token = request.headers.get("x-qr-web-token") ?? "";
+      if (session.web.tokenHash !== await hashToken(token)) return json({ error: "unauthorized" }, 401);
+    }
+    const events = await this.getEvents();
+    const event = events.find((item) => item.id === eventId && item.expiresAt > Date.now());
+    if (!event) return json({ status: "expired", eventId });
+    if (!event.acknowledgedAt) {
+      event.acknowledgedAt = Date.now();
+      await this.saveEvents(events);
+    }
+    return json({ status: "acknowledged", eventId, acknowledgedAt: event.acknowledgedAt });
+  }
+
+  private async handoffStatus(body: Record<string, unknown>) {
+    const session = await this.getSession();
+    if (!session || session.status !== "paired" || !session.mobile) return json({ error: "not_paired" }, 409);
+    if (body.senderId !== session.mobile.id) return json({ error: "unauthorized" }, 401);
+    const eventId = typeof body.eventId === "string" ? body.eventId : "";
+    if (!eventId) return json({ error: "invalid_request" }, 400);
+    const event = (await this.getEvents()).find((item) => item.id === eventId);
+    if (!event || event.expiresAt <= Date.now()) return json({ status: "expired", eventId });
+    return json({ status: event.acknowledgedAt ? "acknowledged" : "pending", eventId, acknowledgedAt: event.acknowledgedAt ?? null });
   }
 
   private async revoke(body: Record<string, unknown>) {
@@ -272,11 +311,11 @@ export class PairingRoom extends DurableObject<Env> {
     return new Response(null, { status: 101, headers: protocol ? { "sec-websocket-protocol": protocol } : undefined, webSocket: client });
   }
 
-  private async dispatchHandoffPush(receiverId: string, eventId: string) {
+  private async dispatchHandoffPush(receiverId: string, code: string, eventId: string) {
     const channels = await this.env.DB.prepare("SELECT id, endpoint, p256dh, auth, kind FROM receiver_delivery_channels WHERE receiver_id = ? AND revoked_at IS NULL ORDER BY CASE kind WHEN 'extension_push' THEN 0 ELSE 1 END, updated_at DESC").bind(receiverId).all<DeliveryChannel>();
     await deliverHandoffPush(
       channels.results,
-      (channel) => sendHandoffPush(channel, { publicKey: this.env.VAPID_PUBLIC_KEY, privateKey: this.env.VAPID_PRIVATE_KEY, subject: this.env.VAPID_SUBJECT }, eventId),
+      (channel) => sendHandoffPush(channel, { publicKey: this.env.VAPID_PUBLIC_KEY, privateKey: this.env.VAPID_PRIVATE_KEY, subject: this.env.VAPID_SUBJECT }, eventId, code),
       async (channel) => { await this.env.DB.prepare("UPDATE receiver_delivery_channels SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL").bind(Date.now(), channel.id).run(); }
     );
   }
@@ -340,6 +379,10 @@ export default {
       return withCors(await mobileDevices(request, env), request);
     }
 
+    if (request.method === "POST" && url.pathname === "/api/v1/mobile/label") {
+      return withCors(await updateMobileLabel(request, env), request);
+    }
+
     const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
     if (request.method === "POST" && (url.pathname === "/api/v1/pairs" || url.pathname.endsWith("/claim"))) {
       const rate = await env.PAIR_DO.get(env.PAIR_DO.idFromName(`rate:${ip}`)).fetch("https://pair.internal/rate", { method: "POST" });
@@ -357,7 +400,7 @@ export default {
       return withCors(json({ error: "try_again" }, 503), request);
     }
 
-    const match = url.pathname.match(/^\/api\/v1\/pairs\/([A-Z0-9-]+)(?:\/(claim|confirm|revoke|status|events|ws|push-subscriptions|connector-link|connector-status|connector-disconnect|connector-health|connector-events|connector-ws))?$/i);
+    const match = url.pathname.match(/^\/api\/v1\/pairs\/([A-Z0-9-]+)(?:\/(claim|confirm|revoke|status|events|ws|ack|push-subscriptions|connector-link|connector-status|connector-disconnect|connector-health|connector-events|connector-ws))?$/i);
     if (match) {
       const code = normalizePairCode(match[1]);
       if (!code) return withCors(json({ error: "invalid_code" }, 400), request);
@@ -377,6 +420,15 @@ export default {
         headers.set("x-qr-connector-id", connectorId);
         headers.delete("host");
         return withCors(await pairStub(env, code).fetch(new Request(forwardUrl, { headers })), request);
+      }
+      if (action === "ack" && request.method === "POST" && url.searchParams.get("connector")) {
+        const connectorId = url.searchParams.get("connector") ?? "";
+        const token = bearerToken(request);
+        if (!connectorId || !token) return withCors(json({ error: "unauthorized" }, 401), request);
+        const headers = new Headers(request.headers);
+        headers.set("x-qr-connector-id", connectorId);
+        headers.delete("host");
+        return withCors(await pairStub(env, code).fetch(new Request("https://pair.internal/ack", { method: "POST", headers, body: request.body })), request);
       }
       if (action === "connector-ws") {
         const connectorId = url.searchParams.get("connector") ?? "";
@@ -403,7 +455,7 @@ export default {
         headers.set("authorization", `Bearer ${webToken}`);
         headers.set("x-qr-role", "web");
       }
-      if (action === "ws" && webToken) headers.set("x-qr-web-token", webToken);
+      if ((action === "ws" || action === "ack") && webToken) headers.set("x-qr-web-token", webToken);
       let forwardedBody: BodyInit | null | undefined = request.method === "GET" ? undefined : request.body;
       if ((action === "confirm" || action === "revoke") && webToken && !bearerToken(request)) {
         const body = await request.json<Record<string, unknown>>().catch(() => ({}));
@@ -418,6 +470,7 @@ export default {
       return withCors(response, request);
     }
 
+    if (request.method === "POST" && url.pathname === "/api/v1/handoffs/status") return withCors(await handoffStatuses(request, env), request);
     if (request.method === "POST" && url.pathname === "/api/v1/handoffs") return withCors(await sendHandoff(request, env), request);
     return withCors(json({ error: "not_found" }, 404), request);
   }
@@ -432,14 +485,51 @@ async function sendHandoff(request: Request, env: Env) {
   const tokenHash = await hashToken(token);
   const receiver = await env.DB.prepare("SELECT id FROM receivers WHERE token_hash = ? AND kind = 'mobile' AND revoked_at IS NULL").bind(tokenHash).first<{ id: string }>();
   if (!receiver) return json({ error: "unauthorized" }, 401);
-  const pairings = await env.DB.prepare("SELECT id FROM pairings WHERE mobile_receiver_id = ? AND revoked_at IS NULL").bind(receiver.id).all<{ id: string }>();
+  const pairings = await env.DB.prepare("SELECT p.id, r.label FROM pairings p JOIN receivers r ON r.id = p.web_receiver_id WHERE p.mobile_receiver_id = ? AND p.revoked_at IS NULL AND r.revoked_at IS NULL").bind(receiver.id).all<{ id: string; label: string }>();
   if (!pairings.results.length) return json({ error: "not_paired" }, 409);
   const deliveries = await Promise.all(pairings.results.map(async (pairing) => {
     const response = await pairStub(env, pairing.id).fetch("https://pair.internal/handoffs", jsonRequest({ senderId: receiver.id, data }));
-    return response.ok;
+    if (!response.ok) return null;
+    const result = await response.json<{ event?: { id?: string } }>().catch((): { event?: { id?: string } } => ({}));
+    const eventId = result.event?.id;
+    return typeof eventId === "string" ? { code: pairing.id, eventId, label: pairing.label } : null;
   }));
-  const delivered = deliveries.filter(Boolean).length;
-  return delivered ? json({ status: "delivered", delivered }, 201) : json({ error: "not_paired" }, 409);
+  const handoffs = deliveries.filter((delivery): delivery is { code: string; eventId: string; label: string } => Boolean(delivery));
+  if (handoffs.length !== pairings.results.length) return json({ error: "delivery_failed" }, 503);
+  return json({ status: "pending", handoffs, total: handoffs.length }, 202);
+}
+
+async function handoffStatuses(request: Request, env: Env) {
+  const token = bearerToken(request);
+  const body = await request.json<Record<string, unknown>>().catch(() => null);
+  if (!token || !body || !Array.isArray(body.handoffs) || body.handoffs.length === 0 || body.handoffs.length > 20) return json({ error: "invalid_request" }, 400);
+  const mobile = await env.DB.prepare("SELECT id FROM receivers WHERE token_hash = ? AND kind = 'mobile' AND revoked_at IS NULL").bind(await hashToken(token)).first<{ id: string }>();
+  if (!mobile) return json({ error: "unauthorized" }, 401);
+  const tracked = await Promise.all(body.handoffs.map(async (value) => {
+    const item = value && typeof value === "object" ? value as Record<string, unknown> : {};
+    const code = typeof item.code === "string" ? normalizePairCode(item.code) : null;
+    const eventId = typeof item.eventId === "string" ? item.eventId : "";
+    if (!code || !eventId) return null;
+    const membership = await env.DB.prepare("SELECT id FROM pairings WHERE id = ? AND mobile_receiver_id = ? AND revoked_at IS NULL").bind(code, mobile.id).first<{ id: string }>();
+    if (!membership) return { code, eventId, status: "expired" as const };
+    const response = await pairStub(env, code).fetch("https://pair.internal/handoff-status", jsonRequest({ senderId: mobile.id, eventId }));
+    const result = await response.json<{ status?: "pending" | "acknowledged" | "expired" }>().catch((): { status?: "pending" | "acknowledged" | "expired" } => ({}));
+    return { code, eventId, status: result.status === "acknowledged" || result.status === "pending" ? result.status : "expired" as const };
+  }));
+  const handoffs = tracked.filter((item): item is { code: string; eventId: string; status: "pending" | "acknowledged" | "expired" } => Boolean(item));
+  const acknowledged = handoffs.filter((item) => item.status === "acknowledged").length;
+  const expired = handoffs.filter((item) => item.status === "expired").length;
+  return json({ total: handoffs.length, acknowledged, pending: handoffs.length - acknowledged - expired, expired, handoffs });
+}
+
+async function updateMobileLabel(request: Request, env: Env) {
+  const token = bearerToken(request);
+  const body = await request.json<Record<string, unknown>>().catch(() => null);
+  if (!token || !body) return json({ error: "unauthorized" }, 401);
+  const label = validateLabel(body.label, "");
+  if (!label) return json({ error: "invalid_label" }, 400);
+  const result = await env.DB.prepare("UPDATE receivers SET label = ? WHERE token_hash = ? AND kind = 'mobile' AND revoked_at IS NULL").bind(label, await hashToken(token)).run();
+  return result.meta.changes === 1 ? json({ label }) : json({ error: "unauthorized" }, 401);
 }
 
 async function mobileDevices(request: Request, env: Env) {

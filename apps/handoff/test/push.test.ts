@@ -15,15 +15,15 @@ describe("handoff delivery", () => {
   it("sends a minimal Push body with high urgency and VAPID details", async () => {
     const calls: unknown[][] = [];
     const send = createHandoffPushSender({ async sendNotification(...args: unknown[]) { calls.push(args); } } as never);
-    await expect(send(extension, config, "event-1")).resolves.toEqual({ sent: true });
+    await expect(send(extension, config, "event-1", "AB2CDE3F")).resolves.toEqual({ sent: true });
     expect(calls).toHaveLength(1);
-    expect(calls[0][1]).toBe(JSON.stringify({ type: "handoff", eventId: "event-1" }));
+    expect(calls[0][1]).toBe(JSON.stringify({ type: "handoff", eventId: "event-1", code: "AB2CDE3F" }));
     expect(calls[0][2]).toMatchObject({ TTL: 60, urgency: "high", vapidDetails: config });
   });
 
   it("marks an HTTP 410 Push subscription as expired", async () => {
     const send = createHandoffPushSender({ async sendNotification() { throw { statusCode: 410 }; } } as never);
-    await expect(send(extension, config, "event-1")).resolves.toEqual({ sent: false, expired: true });
+    await expect(send(extension, config, "event-1", "AB2CDE3F")).resolves.toEqual({ sent: false, expired: true });
   });
 
   it("revokes an expired preferred subscription and falls back to the next channel", async () => {

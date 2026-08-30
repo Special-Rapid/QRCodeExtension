@@ -19,7 +19,7 @@ describe("web receiver markup", () => {
       SELF.fetch("https://qr.test/app.js").then((response) => response.text()),
       SELF.fetch("https://qr.test/service-worker.js").then((response) => response.text())
     ]);
-    for (const selector of ["#notification-button", "#notification-status", "#device-count", "#connector-panel", "#connect-extension", "#disconnect-extension"]) {
+    for (const selector of ["#notification-button", "#notification-status", "#device-count", "#device-details", "#connector-panel", "#connect-extension", "#disconnect-extension"]) {
       expect(app).toContain(selector);
       expect(html).toContain(`id="${selector.slice(1)}"`);
     }
@@ -31,28 +31,46 @@ describe("web receiver markup", () => {
     expect(app).toContain('showForegroundNotification');
     expect(app).toContain('スマホから新しい読み取り結果が届きました。');
     expect(app).not.toContain('body: event.data');
+    expect(app).toContain('連携中のスマホ:');
+    expect(app).toContain('acknowledgeEvent');
   });
 
   it("uses the handoff event id to replace, not re-alert, a redelivered web Push", async () => {
     const serviceWorker = await SELF.fetch("https://qr.test/service-worker.js").then((response) => response.text());
     const handlers = new Map();
     const notifications = new Map();
+    const entries = new Map();
+    const previousCaches = globalThis.caches;
+    const previousFetch = globalThis.fetch;
+    globalThis.caches = { async open() { return {
+      async put(key, value) { entries.set(key.url, value); },
+      async keys() { return [...entries.keys()].map((url) => new Request(url)); },
+      async match(key) { return entries.get(key.url); },
+      async delete(key) { return entries.delete(key.url); }
+    }; } };
+    globalThis.fetch = async () => ({ ok: true });
     const scope = {
       addEventListener(type, handler) { handlers.set(type, handler); },
-      registration: { async showNotification(title, options) { notifications.set(options.tag, { title, options }); } },
+      registration: { async showNotification(title, options) { notifications.set(options.tag, { title, options }); }, sync: { async register() {} } },
       location: { origin: "https://qr.test" },
       clients: { async matchAll() { return []; }, async openWindow() {} }
     };
-    new Function("self", serviceWorker)(scope);
-    const deliver = async () => {
-      let completed;
-      handlers.get("push")({ data: { json() { return { type: "handoff", eventId: "event-1" }; } }, waitUntil(promise) { completed = promise; } });
-      await completed;
-    };
-    await deliver();
-    await deliver();
+    try {
+      new Function("self", serviceWorker)(scope);
+      const deliver = async () => {
+        let completed;
+        handlers.get("push")({ data: { json() { return { type: "handoff", eventId: "event-1", code: "AB2CDE3F" }; } }, waitUntil(promise) { completed = promise; } });
+        await completed;
+      };
+      await deliver();
+      await deliver();
 
-    expect(notifications.size).toBe(1);
-    expect(notifications.get("qr-scan-handoff:event-1")?.options.renotify).toBe(false);
+      expect(notifications.size).toBe(1);
+      expect(notifications.get("qr-scan-handoff:event-1")?.options.renotify).toBe(false);
+      expect(entries.size).toBe(0);
+    } finally {
+      globalThis.caches = previousCaches;
+      globalThis.fetch = previousFetch;
+    }
   });
 });

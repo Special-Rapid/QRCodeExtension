@@ -37,12 +37,12 @@ export async function deliverHandoffPush(channels: DeliveryChannel[], send: (cha
 }
 
 export function createHandoffPushSender(client: PushClient = webpush) {
-  return async (subscription: PushSubscriptionRecord, config: VapidConfig, eventId: string): Promise<PushResult> => {
+  return async (subscription: PushSubscriptionRecord, config: VapidConfig, eventId: string, code: string): Promise<PushResult> => {
     if (!canSendPush(config)) return { sent: false };
     try {
       await client.sendNotification(
         { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },
-        JSON.stringify({ type: "handoff", eventId }),
+        JSON.stringify({ type: "handoff", eventId, code }),
         {
           TTL: 60,
           urgency: "high",

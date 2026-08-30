@@ -1,7 +1,7 @@
 import { notificationPermissionState } from "/notification-state.js";
 
 const key = "qr-scan-web-receiver";
-const state = { credential: loadCredential(), socket: null, poll: null, events: new Map(), extensionId: null, connector: null };
+const state = { credential: loadCredential(), socket: null, poll: null, events: new Map(), extensionId: null, connector: null, connectorError: "", pendingAcks: new Map() };
 const $ = (selector) => document.querySelector(selector);
 
 document.querySelectorAll(".nav-item").forEach((button) => button.addEventListener("click", () => showView(button.dataset.view)));
@@ -68,7 +68,10 @@ async function confirmPair(role) {
 async function loadEvents() {
   if (!state.credential) return;
   const data = await api(`/api/v1/pairs/${state.credential.code}/events?receiver=${encodeURIComponent(state.credential.receiverId)}`, { headers: authHeaders() });
-  data.events.forEach(addEvent);
+  await Promise.all(data.events.map(async (event) => {
+    addEvent(event);
+    await acknowledgeEvent(event.id, event.expiresAt);
+  }));
 }
 
 function openSocket() {
@@ -78,11 +81,12 @@ function openSocket() {
   state.socket = socket;
   socket.addEventListener("message", (message) => {
     const data = JSON.parse(message.data);
-    if (data.type === "handoff" && addEvent(data.event)) showForegroundNotification(data.event);
+    if (data.type === "handoff") void receiveHandoff(data.event);
     if (data.type === "claimed") { setPairStatus(`${data.mobileLabel} がコードを入力しました。確認フレーズを見比べてください。`); $("#confirm-web").disabled = false; }
     if (data.type === "paired") void refreshPairing();
     if (data.type === "revoked") renderUnpaired(`${data.by} が連携を解除しました。`);
   });
+  socket.addEventListener("open", () => { void loadEvents(); });
   socket.addEventListener("close", () => { state.socket = null; if (state.credential?.status === "paired") window.setTimeout(openSocket, 2000); });
 }
 
@@ -92,6 +96,8 @@ function renderUnpaired(message = "") {
   closeConnection();
   state.credential = null;
   state.connector = null;
+  for (const pending of state.pendingAcks.values()) window.clearTimeout(pending.timer);
+  state.pendingAcks.clear();
   sessionStorage.removeItem(key);
   localStorage.removeItem(key);
   $("#unpaired-panel").hidden = false;
@@ -136,7 +142,7 @@ function renderDeviceSummary() {
   const count = 1 + connectorCount;
   $("#connection-state").textContent = `接続中 ${count}台`;
   $("#device-count").textContent = `${count}台`;
-  $("#device-details").textContent = connectorCount ? `${mobile} と連携済みです。Chrome拡張もこのPCの高速通知用に接続されています。` : `${mobile} と連携済みです。通知と受信箱はこのページでまとめて管理します。`;
+  $("#device-details").textContent = connectorCount ? `連携中のスマホ: ${mobile}。Chrome拡張もこのPCの高速通知用に接続されています。` : `連携中のスマホ: ${mobile}。通知と受信箱はこのページでまとめて管理します。`;
 }
 
 function renderConnector() {
@@ -147,6 +153,12 @@ function renderConnector() {
     $("#connector-description").textContent = "Chrome拡張が高速通知コネクタとして接続済みです。通知を押すと、URLは直接開き、文字列はこの受信箱を開きます。";
     connect.hidden = true;
     disconnect.hidden = false;
+    return;
+  }
+  if (state.connectorError) {
+    $("#connector-description").textContent = state.connectorError;
+    connect.hidden = false;
+    disconnect.hidden = true;
     return;
   }
   if (state.extensionId) {
@@ -181,6 +193,38 @@ function showForegroundNotification(event) {
   } catch { /* The inbox update remains the primary visible fallback. */ }
 }
 
+async function receiveHandoff(event) {
+  if (!event?.id) return;
+  if (addEvent(event)) showForegroundNotification(event);
+  await acknowledgeEvent(event.id, event.expiresAt);
+}
+
+async function acknowledgeEvent(eventId, expiresAt = Date.now() + 10 * 60 * 1000) {
+  if (!state.credential || typeof eventId !== "string" || !eventId) return;
+  try {
+    await api(`/api/v1/pairs/${state.credential.code}/ack`, { method: "POST", body: { eventId } });
+    const pending = state.pendingAcks.get(eventId);
+    if (pending) window.clearTimeout(pending.timer);
+    state.pendingAcks.delete(eventId);
+  } catch { scheduleAckRetry(eventId, expiresAt); }
+}
+
+function scheduleAckRetry(eventId, expiresAt) {
+  if (!state.credential || state.pendingAcks.has(eventId)) return;
+  const expiresAtMs = typeof expiresAt === "number" && expiresAt > Date.now() ? expiresAt : Date.now() + 10 * 60 * 1000;
+  const retry = () => {
+    const pending = state.pendingAcks.get(eventId);
+    if (!pending || !state.credential) return;
+    if (Date.now() >= pending.expiresAt) return state.pendingAcks.delete(eventId);
+    pending.attempt += 1;
+    void acknowledgeEvent(eventId, pending.expiresAt);
+    if (!state.pendingAcks.has(eventId)) return;
+    pending.timer = window.setTimeout(retry, Math.min(30_000, 1_000 * 2 ** pending.attempt));
+  };
+  const timer = window.setTimeout(retry, 1_000);
+  state.pendingAcks.set(eventId, { attempt: 0, expiresAt: expiresAtMs, timer });
+}
+
 async function requestNotifications() {
   if (!state.credential) return setNotificationStatus("先にスマホと連携してください。", true);
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return setNotificationStatus("このブラウザはWeb通知に対応していません。", true);
@@ -208,6 +252,7 @@ async function refreshWebPushStatus() {
   }
   try {
     const registration = await navigator.serviceWorker.getRegistration("/");
+    registration?.active?.postMessage({ type: "retry-handoff-acks" });
     const subscription = await registration?.pushManager.getSubscription();
     const enabled = subscription && Notification.permission === "granted";
     $("#notification-button").textContent = enabled ? "Web通知は有効です" : "Web通知を有効にする";
@@ -216,10 +261,24 @@ async function refreshWebPushStatus() {
 }
 
 function receiveExtensionBridge(event) {
-  if (event.source !== window || event.origin !== location.origin || !event.data || event.data.source !== "qr-scan-extension" || event.data.type !== "ready") return;
-  if (!/^[a-p]{32}$/.test(event.data.extensionId ?? "")) return;
-  state.extensionId = event.data.extensionId;
-  renderConnector();
+  if (event.source !== window || event.origin !== location.origin || !event.data || event.data.source !== "qr-scan-extension") return;
+  if (event.data.type === "ready") {
+    if (!/^[a-p]{32}$/.test(event.data.extensionId ?? "")) return;
+    state.extensionId = event.data.extensionId;
+    state.connectorError = "";
+    renderConnector();
+    return;
+  }
+  if (event.data.type === "connector-result") {
+    if (event.data.ok) {
+      state.connectorError = "";
+      $("#connector-description").textContent = "Chrome拡張を接続しました。状態を確認しています…";
+      window.setTimeout(() => { void syncConnector(); }, 250);
+    } else {
+      state.connectorError = extensionMessage(event.data.error);
+      renderConnector();
+    }
+  }
 }
 
 async function syncConnector() {
@@ -232,11 +291,12 @@ async function syncConnector() {
 async function connectExtension() {
   if (!state.credential || !state.extensionId) return;
   try {
+    state.connectorError = "";
     const link = await api(`/api/v1/pairs/${state.credential.code}/connector-link`, { method: "POST", body: { extensionId: state.extensionId } });
     window.postMessage({ source: "qr-scan-web", type: "connector-link", token: link.token, extensionId: state.extensionId }, location.origin);
     $("#connector-description").textContent = "Chrome拡張を接続しています…";
-    window.setTimeout(() => { void syncConnector(); }, 1000);
-  } catch (error) { setPairStatus(messageFor(error), true); }
+    window.setTimeout(() => { void syncConnector(); }, 2_000);
+  } catch (error) { state.connectorError = extensionMessage(error instanceof Error ? error.message : "request_failed"); renderConnector(); }
 }
 
 async function disconnectExtension() {
@@ -264,4 +324,5 @@ function browserLabel() { return navigator.userAgent.includes("Mac") ? "Mac の�
 function base64UrlToUint8Array(value) { const padded = value + "=".repeat((4 - value.length % 4) % 4); const binary = atob(padded.replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(binary, (character) => character.charCodeAt(0)); }
 async function api(path, options = {}) { const response = await fetch(path, { ...options, headers: { "content-type": "application/json", ...(options.headers ?? {}) }, body: options.body ? JSON.stringify(options.body) : undefined }); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(apiMessage(data.error)); return data; }
 function apiMessage(code) { return ({ rate_limited: "試行回数が多すぎます。少し待ってから試してください。", expired: "連携コードの有効期限が切れました。", unauthorized: "連携情報を確認できませんでした。", already_claimed: "このコードは別のスマホで入力済みです。", push_unavailable: "Web通知はまだ準備中です。管理者が通知設定を完了した後、もう一度試してください。", invalid_subscription: "このブラウザでは通知を登録できませんでした。", link_expired: "Chrome拡張の接続時間が切れました。もう一度試してください。" })[code] ?? "通信に失敗しました。"; }
+function extensionMessage(code) { return ({ link_expired: "Chrome拡張の接続時間が切れました。もう一度接続してください。", push_unavailable: "Chrome拡張の通知設定を確認できませんでした。", request_failed: "Chrome拡張との通信に失敗しました。拡張を再読み込みしてから、もう一度接続してください。" })[code] ?? "Chrome拡張を接続できませんでした。拡張を再読み込みしてから、もう一度接続してください。"; }
 function messageFor(error) { return error instanceof Error ? error.message : "通信に失敗しました。"; }

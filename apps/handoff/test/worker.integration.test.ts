@@ -36,13 +36,19 @@ describe('handoff Worker integration', () => {
     const mobileConfirmed = await api(`/api/v1/pairs/${web.code}/confirm`, { method: 'POST', body: JSON.stringify({ role: 'mobile', token: mobile.token }), headers: { 'content-type': 'application/json' } });
     expect((await mobileConfirmed.json() as { status: string }).status).toBe('paired');
 
+    const renamed = await api('/api/v1/mobile/label', { method: 'POST', body: JSON.stringify({ label: 'Kenta の Android' }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
+    await expect(renamed.json()).resolves.toEqual({ label: 'Kenta の Android' });
+    const namedWebStatus = await api(`/api/v1/pairs/${web.code}/status`, { headers: { cookie: webCookie! } });
+    await expect(namedWebStatus.json()).resolves.toMatchObject({ peerLabel: 'Kenta の Android' });
+
     const socketResponse = await api(`/api/v1/pairs/${web.code}/ws`, { headers: { cookie: webCookie!, upgrade: 'websocket' } });
     expect(socketResponse.status).toBe(101);
     expect(socketResponse.webSocket).not.toBeNull();
     socketResponse.webSocket!.accept();
 
     const sent = await api('/api/v1/handoffs', { method: 'POST', body: JSON.stringify({ receiverId: mobile.receiverId, data: 'example.com/from-phone' }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
-    expect(sent.status).toBe(201);
+    expect(sent.status).toBe(202);
+    const handoff = await sent.json<{ handoffs: Array<{ code: string; eventId: string }> }>();
 
     const denied = await api(`/api/v1/pairs/${web.code}/events?receiver=${web.receiverId}`);
     expect(denied.status).toBe(401);
@@ -50,6 +56,13 @@ describe('handoff Worker integration', () => {
     const inbox = await api(`/api/v1/pairs/${web.code}/events?receiver=${web.receiverId}`, { headers: { cookie: webCookie! } });
     expect(inbox.status).toBe(200);
     await expect(inbox.json()).resolves.toMatchObject({ events: [{ data: 'example.com/from-phone', host: 'example.com', openUrl: 'https://example.com/from-phone' }] });
+
+    const beforeAck = await api('/api/v1/handoffs/status', { method: 'POST', body: JSON.stringify({ handoffs: handoff.handoffs }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
+    await expect(beforeAck.json()).resolves.toMatchObject({ total: 1, acknowledged: 0, pending: 1 });
+    const acknowledged = await api(`/api/v1/pairs/${web.code}/ack`, { method: 'POST', body: JSON.stringify({ eventId: handoff.handoffs[0].eventId }), headers: { 'content-type': 'application/json', cookie: webCookie! } });
+    await expect(acknowledged.json()).resolves.toMatchObject({ status: 'acknowledged', eventId: handoff.handoffs[0].eventId });
+    const afterAck = await api('/api/v1/handoffs/status', { method: 'POST', body: JSON.stringify({ handoffs: handoff.handoffs }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
+    await expect(afterAck.json()).resolves.toMatchObject({ total: 1, acknowledged: 1, pending: 0 });
 
     const revoked = await api(`/api/v1/pairs/${web.code}/revoke`, { method: 'POST', body: '{}' , headers: { 'content-type': 'application/json', cookie: webCookie! } });
     expect(await revoked.json()).toEqual({ status: 'revoked' });
@@ -83,11 +96,21 @@ describe('handoff Worker integration', () => {
     await expect(devices.json()).resolves.toMatchObject({ deviceCount: 2, devices: [{ id: secondWeb.code, label: 'Windows のブラウザ' }, { id: firstWeb.code, label: 'Mac のブラウザ' }] });
 
     const sent = await api('/api/v1/handoffs', { method: 'POST', body: JSON.stringify({ data: 'https://example.com/to-both' }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
-    await expect(sent.json()).resolves.toEqual({ status: 'delivered', delivered: 2 });
+    expect(sent.status).toBe(202);
+    const handoff = await sent.json<{ total: number; handoffs: Array<{ code: string; eventId: string }> }>();
+    expect(handoff.total).toBe(2);
     for (const [web, cookie] of [[firstWeb, firstCookie], [secondWeb, secondCookie]] as const) {
       const inbox = await api(`/api/v1/pairs/${web.code}/events?receiver=${web.receiverId}`, { headers: { cookie } });
       await expect(inbox.json()).resolves.toMatchObject({ events: [{ data: 'https://example.com/to-both' }] });
     }
+    const firstReceipt = handoff.handoffs.find((item) => item.code === firstWeb.code)!;
+    const secondReceipt = handoff.handoffs.find((item) => item.code === secondWeb.code)!;
+    await api(`/api/v1/pairs/${firstWeb.code}/ack`, { method: 'POST', body: JSON.stringify({ eventId: firstReceipt.eventId }), headers: { 'content-type': 'application/json', cookie: firstCookie } });
+    const partial = await api('/api/v1/handoffs/status', { method: 'POST', body: JSON.stringify({ handoffs: handoff.handoffs }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
+    await expect(partial.json()).resolves.toMatchObject({ total: 2, acknowledged: 1, pending: 1 });
+    await api(`/api/v1/pairs/${secondWeb.code}/ack`, { method: 'POST', body: JSON.stringify({ eventId: secondReceipt.eventId }), headers: { 'content-type': 'application/json', cookie: secondCookie } });
+    const complete = await api('/api/v1/handoffs/status', { method: 'POST', body: JSON.stringify({ handoffs: handoff.handoffs }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
+    await expect(complete.json()).resolves.toMatchObject({ total: 2, acknowledged: 2, pending: 0 });
 
     const revoked = await api(`/api/v1/pairs/${firstWeb.code}/revoke`, { method: 'POST', body: JSON.stringify({ role: 'mobile', token: mobile.token }), headers: { 'content-type': 'application/json' } });
     expect(revoked.status).toBe(200);
@@ -95,7 +118,7 @@ describe('handoff Worker integration', () => {
     await expect(remaining.json()).resolves.toMatchObject({ deviceCount: 1, devices: [{ id: secondWeb.code, label: 'Windows のブラウザ' }] });
 
     const sentAfterRevoke = await api('/api/v1/handoffs', { method: 'POST', body: JSON.stringify({ data: 'https://example.com/second-only' }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
-    await expect(sentAfterRevoke.json()).resolves.toEqual({ status: 'delivered', delivered: 1 });
+    await expect(sentAfterRevoke.json()).resolves.toMatchObject({ status: 'pending', total: 1 });
     const firstInbox = await api(`/api/v1/pairs/${firstWeb.code}/events?receiver=${firstWeb.receiverId}`, { headers: { cookie: firstCookie } });
     expect(firstInbox.status).toBe(401);
     const secondInbox = await api(`/api/v1/pairs/${secondWeb.code}/events?receiver=${secondWeb.receiverId}`, { headers: { cookie: secondCookie } });
@@ -118,6 +141,27 @@ describe('handoff Worker integration', () => {
     await expect(status.json()).resolves.toMatchObject({ status: 'revoked' });
     const socket = await api(`/api/v1/pairs/${web.code}/ws`, { headers: { cookie: webCookie!, upgrade: 'websocket' } });
     expect(socket.status).toBe(401);
+  });
+
+  it('does not claim delivery when one active pairing cannot accept the handoff', async () => {
+    const created = await api('/api/v1/pairs', { method: 'POST', body: JSON.stringify({ label: 'Web' }), headers: { 'content-type': 'application/json' } });
+    const web = await created.json<{ code: string }>();
+    const webCookie = created.headers.get('set-cookie')!;
+    const claimed = await api(`/api/v1/pairs/${web.code}/claim`, { method: 'POST', body: JSON.stringify({ label: 'Phone' }), headers: { 'content-type': 'application/json' } });
+    const mobile = await claimed.json<{ token: string }>();
+    await api(`/api/v1/pairs/${web.code}/confirm`, { method: 'POST', body: JSON.stringify({ role: 'web' }), headers: { 'content-type': 'application/json', cookie: webCookie } });
+    await api(`/api/v1/pairs/${web.code}/confirm`, { method: 'POST', body: JSON.stringify({ role: 'mobile', token: mobile.token }), headers: { 'content-type': 'application/json' } });
+    const stub = env.PAIR_DO.getByName(`pair:${web.code}`);
+    await runInDurableObject(stub, async (_instance, objectState) => {
+      const session = await objectState.storage.get<{ status: string }>('pair-session');
+      if (!session) throw new Error('pair session is missing');
+      session.status = 'revoked';
+      await objectState.storage.put('pair-session', session);
+    });
+
+    const sent = await api('/api/v1/handoffs', { method: 'POST', body: JSON.stringify({ data: 'https://example.com/not-confirmed' }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
+    expect(sent.status).toBe(503);
+    await expect(sent.json()).resolves.toEqual({ error: 'delivery_failed' });
   });
 
   it('expires a pending pairing before it can be claimed', async () => {
@@ -162,7 +206,8 @@ describe('handoff Worker integration', () => {
     expect(connectorSocket.status).toBe(101);
 
     const sent = await api('/api/v1/handoffs', { method: 'POST', body: JSON.stringify({ data: 'https://example.com/connector-event' }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
-    expect(sent.status).toBe(201);
+    expect(sent.status).toBe(202);
+    const handoff = await sent.json<{ handoffs: Array<{ eventId: string }> }>();
     const connectorEvents = await api(`/api/v1/pairs/${web.code}/connector-events?connector=${connector.connector.id}`, { headers: { authorization: `Bearer ${connector.connector.token}` } });
     const { events } = await connectorEvents.json<{ events: Array<{ id: string; data: string }> }>();
     const handoffEvent = events.find((event) => event.data === 'https://example.com/connector-event');
@@ -171,6 +216,10 @@ describe('handoff Worker integration', () => {
     await expect(connectorEvent.json()).resolves.toMatchObject({ events: [{ id: handoffEvent!.id, data: 'https://example.com/connector-event' }] });
     const missingConnectorEvent = await api(`/api/v1/pairs/${web.code}/connector-events?connector=${connector.connector.id}&event=missing`, { headers: { authorization: `Bearer ${connector.connector.token}` } });
     await expect(missingConnectorEvent.json()).resolves.toEqual({ events: [] });
+    const connectorAck = await api(`/api/v1/pairs/${web.code}/ack?connector=${connector.connector.id}`, { method: 'POST', body: JSON.stringify({ eventId: handoff.handoffs[0].eventId }), headers: { 'content-type': 'application/json', authorization: `Bearer ${connector.connector.token}` } });
+    await expect(connectorAck.json()).resolves.toMatchObject({ status: 'acknowledged', eventId: handoff.handoffs[0].eventId });
+    const connectorReceipt = await api('/api/v1/handoffs/status', { method: 'POST', body: JSON.stringify({ handoffs: handoff.handoffs }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
+    await expect(connectorReceipt.json()).resolves.toMatchObject({ total: 1, acknowledged: 1 });
 
     const disconnected = await api(`/api/v1/pairs/${web.code}/connector-disconnect`, { method: 'POST', body: JSON.stringify({ extensionId }), headers: { 'content-type': 'application/json', cookie: webCookie! } });
     expect(disconnected.status).toBe(200);

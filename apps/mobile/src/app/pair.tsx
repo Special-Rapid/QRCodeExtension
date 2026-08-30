@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { claimPair, confirmPair, getMobileDevices, getPairStatus, loadMobileIdentity, revokePair, type MobileIdentity, type PairedPcDevice, type PairCredential } from '../lib/handoff';
+import { claimPair, confirmPair, getMobileDevices, getPairStatus, loadMobileIdentity, mobileDeviceLabel, refreshMobileIdentityLabel, revokePair, type MobileIdentity, type PairedPcDevice, type PairCredential } from '../lib/handoff';
 
 export default function PairScreen() {
   const [code, setCode] = useState('');
@@ -23,7 +23,8 @@ export default function PairScreen() {
   useEffect(() => {
     void (async () => {
       try {
-        const currentIdentity = await loadMobileIdentity();
+        const storedIdentity = await loadMobileIdentity();
+        const currentIdentity = storedIdentity ? await refreshMobileIdentityLabel(storedIdentity).catch(() => storedIdentity) : null;
         setIdentity(currentIdentity);
         await refreshDevices(currentIdentity);
       } catch {
@@ -59,7 +60,7 @@ export default function PairScreen() {
   const beginPair = async () => {
     setBusy(true);
     try {
-      const credential = await claimPair(code, 'このスマホ', identity);
+      const credential = await claimPair(code, mobileDeviceLabel(), identity);
       setPair(credential);
       setMessage('PCにも同じ確認フレーズが表示されます。見比べてください。');
     } catch (error) {
@@ -103,6 +104,7 @@ export default function PairScreen() {
     <Text style={styles.copy}>PCで `qr.snkisk.com` を開き、「スマホと連携」から表示されるコードを入力します。新しいPCを追加するたび、両方の画面で確認します。</Text>
 
     <View style={styles.card}>
+      <View style={styles.cardHeading}><Text style={styles.label}>このスマホ</Text><Text style={styles.currentDeviceLabel}>{identity?.label ?? mobileDeviceLabel()}</Text></View>
       <View style={styles.cardHeading}><Text style={styles.label}>接続中のPC</Text><Text style={styles.count}>{devices.length}台</Text></View>
       {devices.length === 0 ? <Text style={styles.status}>まだPCは接続されていません。</Text> : devices.map((device) => <View key={device.id} style={styles.deviceRow}>
         <View style={styles.deviceCopy}><Text style={styles.deviceLabel}>{device.label}</Text><Text style={styles.deviceMeta}>連携: {new Date(device.createdAt).toLocaleDateString('ja-JP')}</Text></View>
@@ -134,7 +136,7 @@ const styles = StyleSheet.create({
   copy: { color: '#52627C', fontSize: 15, lineHeight: 24 },
   card: { gap: 14, padding: 20, borderRadius: 18, borderCurve: 'continuous', borderWidth: 1, borderColor: '#B9D1FF', backgroundColor: '#FFFFFF' },
   cardHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  label: { color: '#52627C', fontSize: 13, fontWeight: '800' }, count: { color: '#1463F3', fontSize: 18, fontWeight: '900' },
+  label: { color: '#52627C', fontSize: 13, fontWeight: '800' }, count: { color: '#1463F3', fontSize: 18, fontWeight: '900' }, currentDeviceLabel: { flex: 1, marginLeft: 12, color: '#0D1B3E', fontSize: 14, fontWeight: '800', textAlign: 'right' },
   input: { minHeight: 54, borderWidth: 1, borderColor: '#9DBBF0', borderRadius: 12, color: '#0D1B3E', fontSize: 24, fontWeight: '800', letterSpacing: 2, paddingHorizontal: 15, textAlign: 'center' },
   phrase: { color: '#0D1B3E', fontSize: 27, fontWeight: '800', letterSpacing: 1, textAlign: 'center' },
   status: { color: '#52627C', fontSize: 14, lineHeight: 21, textAlign: 'center' },

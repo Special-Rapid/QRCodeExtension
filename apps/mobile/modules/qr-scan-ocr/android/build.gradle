@@ -1,0 +1,24 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.qrscanocr'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.qrscanocr"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  // Bundled Latin OCR: URLs are available offline from the first scan.
+  implementation 'com.google.mlkit:text-recognition:16.0.1'
+  implementation 'androidx.exifinterface:exifinterface:1.3.7'
+}

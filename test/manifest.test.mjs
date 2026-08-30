@@ -5,7 +5,7 @@ import test from "node:test";
 test("declares a camera-free Manifest V3 extension with a Chrome 121+ fast connector", async () => {
   const manifest = JSON.parse(await readFile("src/manifest.json", "utf8"));
   assert.equal(manifest.manifest_version, 3);
-  assert.deepEqual(manifest.permissions, ["activeTab", "notifications", "storage"]);
+  assert.deepEqual(manifest.permissions, ["activeTab", "notifications", "storage", "alarms"]);
   assert.equal(manifest.minimum_chrome_version, "121");
   assert.deepEqual(manifest.host_permissions, ["https://qr.snkisk.com/*"]);
   assert.equal(manifest.background.service_worker, "handoff-background.js");
@@ -23,4 +23,7 @@ test("declares a camera-free Manifest V3 extension with a Chrome 121+ fast conne
     ...manifest.content_scripts.flatMap((contentScript) => contentScript.js)
   ];
   await Promise.all(manifestFiles.map((file) => access(`dist/${file}`)));
+  const bridge = await readFile("src/connector-bridge.js", "utf8");
+  assert.match(bridge, /announce\(\);\s*\n\s*function announce/);
+  assert.match(bridge, /connector-result/);
 });
