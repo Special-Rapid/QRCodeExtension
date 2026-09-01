@@ -1,32 +1,55 @@
 # QR Scan
 
-カメラを使わず、Chromeで表示中のQRコードやローカル画像のQRコードを読み取るChrome拡張です。解析はすべて端末内で完結し、カメラ権限や外部サーバーは使いません。
+QRコードをカメラなしで読み取るChrome拡張と、スマホで読んだコードをペアリング済みPCへ渡すためのモバイル／Web受信箱をまとめたプロジェクトです。
 
 ## できること
 
-- 表示中タブの見えている範囲をワンクリックでスキャン
-- PNG / JPEG / WebP / GIF画像を選んでスキャン
-- 読み取り結果をコピー、HTTP(S) URLなら新しいタブで開く
+### Chrome拡張
 
-## 開発・読み込み
+- 表示中タブの可視領域にあるQRコードを、ポップアップを開くだけでスキャン
+- PNG・JPEG・WebP・GIF画像からQRコードをスキャン
+- 読み取り結果をコピーし、HTTP(S) URLだけを明示操作で新しいタブに開く
+- カメラ権限や全サイトへの常時アクセスを要求せず、スキャンは端末内で実行
+
+### モバイルとPCの連携
+
+- iOS／AndroidでQRコード・バーコード・印刷されたURLを検出
+- 複数候補では送信する1件を選択し、ペアリング済みPCへ明示的に渡す
+- PCのWeb受信箱または任意のChrome拡張コネクタで受信
+- Web受信箱では内容と送信先ホストを確認してからURLを開く。非URL値はコピーのみ
+- Chrome拡張コネクタの通知クリックでは、検証済みのHTTP(S) URLだけを直接開き、それ以外はWeb受信箱を開く
+
+## プロジェクト構成
+
+| パス | 内容 |
+| --- | --- |
+| `src/` | Manifest V3 Chrome拡張。カメラを使わないQRスキャンと任意の受信箱コネクタ。 |
+| `apps/mobile/` | ExpoベースのiOS／Androidスキャナー。 |
+| `apps/handoff/` | `qr.snkisk.com`向けのCloudflare Worker、D1、Durable Object、PCのWeb受信箱。 |
+
+## Chrome拡張をローカルで試す
 
 ```sh
 npm install
 npm run check
 ```
 
-Chromeの `chrome://extensions` でデベロッパーモードを有効にし、「パッケージ化されていない拡張機能を読み込む」から `dist/` を選択してください。
+次にChromeで `chrome://extensions` を開き、デベロッパーモードを有効にして「パッケージ化されていない拡張機能を読み込む」から生成された `dist/` を選択します。
 
-## プライバシー
+## セキュリティとプライバシー
 
-カメラにはアクセスしません。「このページをスキャン」は、ユーザー操作後にアクティブタブの可視領域だけを一時キャプチャして端末内で解析します。画像を含むデータは送信・保存しません。
+- Chrome拡張のページ／画像スキャンは、ユーザー操作後に取得したデータを端末内だけで解析します。画像データは外部へ送信・保存しません。
+- モバイルからPCへ渡す値は、明示的にペアリングした受信先だけに配信します。ペアリングは各画面で確認でき、いつでも解除できます。
+- Web受信箱ではリンクを自動で開きません。HTTP(S) URLだけを表示し、確認後の操作で開きます。
+- Chrome拡張の通知には、読み取った本文やURL全体を入れません。クリック時は、ペアリング済みイベントから検証済みのHTTP(S) URLだけを直接開きます。
 
-## プロジェクト構成
+## 開発
 
-- `src/`: Chrome上のQRコードをカメラなしで読むManifest V3拡張
-- `apps/mobile/`: iOS／Android共通のQR・バーコードスキャナー。PC連携のコード入力と安全な送信機能を含む
-- `apps/handoff/`: `qr-handoff` Cloudflare Worker、D1、Durable Object、PCのWeb受信箱
+各コンポーネントの詳細は、それぞれのREADMEを参照してください。
 
-Chrome拡張は「拡張機能のオプション」からスマホとの連携コードを作成できます。連携後は、拡張の受信箱とOS通知に読み取り結果が届きます。通知をクリックしてもリンクは開かず、受信箱で表示内容を確認してから開く仕様です。
+- [モバイルアプリ](apps/mobile/README.md)
+- [PC受信箱とWorker](apps/handoff/README.md)
 
-`apps/handoff`はローカル検証済みです。Workerは`qr.snkisk.com`のCustom Domainだけで公開し、`workers.dev`とPreview URLは設定ファイルで無効化します。VAPIDによるバックグラウンドWeb Pushはまだ行っていません。
+## License
+
+This project is licensed under the [MIT License](LICENSE).
