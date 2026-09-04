@@ -249,6 +249,7 @@ export function createSystemStyles(palette: Palette) {
     deliveryPill: { alignSelf: 'flex-start', marginTop: 7, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 99, overflow: 'hidden', backgroundColor: palette.deliveryPillBg, color: palette.deliveryPillText, fontSize: 12, fontWeight: '800' },
     topActions: { flexDirection: 'row', gap: 9 },
     topAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: palette.topActionBorder, borderRadius: 22, backgroundColor: palette.topActionBackground },
+    topActionLink: { width: 80, paddingHorizontal: 10 },
     topActionText: { color: palette.topActionText, fontSize: 14, fontWeight: '800' },
     viewfinder: { position: 'absolute', top: '26%', left: '12%', right: '18%', bottom: '31%' },
     corner: { position: 'absolute', width: 38, height: 38, borderColor: palette.viewfinderBorder, borderRadius: 8, borderCurve: 'continuous' },

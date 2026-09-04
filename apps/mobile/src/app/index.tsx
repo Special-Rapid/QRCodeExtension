@@ -341,7 +341,7 @@ export default function ScannerScreen() {
       <View><Text style={styles.brand}>{t.appName}</Text><Text style={styles.deliveryPill}>{result ? deliveryCopy : paired ? t.pcAutoSend : t.pcStateConnect}</Text></View>
       <View style={styles.topActions}>
         <Pressable accessibilityRole="button" accessibilityLabel={torch ? t.torchOn : t.torchOff} style={styles.topAction} onPress={() => setTorch((value) => !value)}><Text style={styles.topActionText}>{torch ? '☀' : '◐'}</Text></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={t.pcLinkSettings} style={styles.topAction} onPress={() => router.push('/pair')}><Text style={styles.topActionText}>PC</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={t.pcLinkSettings} style={[styles.topAction, styles.topActionLink]} onPress={() => router.push('/pair')}><Text numberOfLines={1} style={styles.topActionText}>{t.pcLinkSettings}</Text></Pressable>
       </View>
     </View>
     <View pointerEvents="none" style={styles.viewfinder}>

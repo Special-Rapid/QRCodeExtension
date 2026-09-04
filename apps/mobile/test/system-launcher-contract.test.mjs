@@ -39,3 +39,18 @@ test('theme and language preferences expose System, Light, Dark, Japanese, and E
   assert.match(settings, /\['system', 'light', 'dark'\]/);
   assert.match(settings, /\['system', 'ja', 'en'\]/);
 });
+
+test('scanner PC link stays an explicit one-line pairing action with an accessible target', async () => {
+  const [scanner, strings, theme] = await Promise.all([
+    read('../src/app/index.tsx'),
+    read('../src/lib/strings.ts'),
+    read('../src/lib/theme.ts'),
+  ]);
+  assert.match(scanner, /router\.push\('\/pair'\)/);
+  assert.match(scanner, /numberOfLines=\{1\}/);
+  assert.match(scanner, /\{t\.pcLinkSettings\}/);
+  assert.match(strings, /pcLinkSettings: 'PC連携'/);
+  assert.match(strings, /pcLinkSettings: 'PC link'/);
+  assert.match(theme, /topAction: \{ width: 44, height: 44/);
+  assert.match(theme, /topActionLink: \{ width: 80, paddingHorizontal: 10 \}/);
+});
