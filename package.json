@@ -2,21 +2,19 @@
   "name": "qrcodeextension",
   "version": "0.1.0",
   "private": true,
-  "description": "Camera-free QR code scanner Chrome extension",
+  "description": "Camera-free QR scanning and secure mobile-to-PC link handoff",
   "type": "module",
   "scripts": {
-    "generate:brand-assets": "node scripts/generate-brand-assets.mjs",
-    "check:brand-assets": "node scripts/generate-brand-assets.mjs --check",
-    "build": "node scripts/build.mjs",
-    "test": "node --test test/**/*.test.mjs",
-    "check": "npm run check:brand-assets && npm run build && npm test"
+    "generate:brand-assets": "node tooling/generate-brand-assets.mjs",
+    "check:brand-assets": "node tooling/generate-brand-assets.mjs --check",
+    "build:extension": "npm --prefix apps/extension run build",
+    "test:extension": "npm --prefix apps/extension run test",
+    "check:extension": "npm run check:brand-assets && npm --prefix apps/extension run check",
+    "check:handoff": "npm --prefix apps/handoff run check",
+    "check:mobile": "npm --prefix apps/mobile run check",
+    "check": "npm run check:extension && npm run check:handoff && npm run check:mobile"
   },
-  "dependencies": {
-    "jsqr": "^1.4.0"
-  },
-  "devDependencies": {
-    "esbuild": "^0.25.0",
-    "pngjs": "^7.0.0",
-    "qrcode": "^1.5.4"
-  }
+  "workspaces": [
+    "apps/extension"
+  ]
 }

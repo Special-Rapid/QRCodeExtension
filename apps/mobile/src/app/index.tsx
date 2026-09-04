@@ -3,13 +3,16 @@ import * as Clipboard from 'expo-clipboard';
 import { File } from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type GestureResponderEvent, Linking, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { isOcrAvailable, recognizeUrlText } from '../../modules/qr-scan-ocr';
 import { canCommitDetection, nextDetectionEpoch } from '../lib/detection-coordinator';
 import { getHandoffReceipt, getMobileDevices, loadMobileIdentity, refreshMobileIdentityLabel, sendHandoff, type HandoffTarget } from '../lib/handoff';
 import { candidateSignature, collectBarcodeCandidates, collectOcrUrlCandidates, toHttpUrl, type ScanCandidate } from '../lib/scan-candidates';
+import { usePreferences } from '../lib/preferences';
+import { formatString, getStrings, handoffErrorMessage } from '../lib/strings';
+import { createSystemStyles, getPalette } from '../lib/theme';
 
 type DeliveryState = 'idle' | 'sending' | 'waiting' | 'sent' | 'expired' | 'failed' | 'not_paired';
 type ScannerPhase = 'ready' | 'acquiring' | 'picking' | 'result';
@@ -34,6 +37,10 @@ function markerPosition(candidate: ScanCandidate, frame: CapturedFrame | null, v
 }
 
 export default function ScannerScreen() {
+  const { resolvedTheme, locale } = usePreferences();
+  const isDark = resolvedTheme === 'dark';
+  const t = useMemo(() => getStrings(locale), [locale]);
+  const candidatePickNotice = t.candidatePickNotice;
   const [permission, requestPermission] = useCameraPermissions();
   const [zoom, setZoom] = useState(0);
   const [torch, setTorch] = useState(false);
@@ -63,6 +70,7 @@ export default function ScannerScreen() {
   const pinch = useRef<{ distance: number; zoom: number } | null>(null);
   const insets = useSafeAreaInsets();
   const viewport = useWindowDimensions();
+  const styles = useMemo(() => createSystemStyles(getPalette(isDark ? 'dark' : 'light')), [isDark]);
 
   const clearScanTimers = () => {
     if (acquisition.current) clearTimeout(acquisition.current.timer);
@@ -133,23 +141,23 @@ export default function ScannerScreen() {
       if (generation !== scanGeneration.current) return;
       if (receipt.total > 0 && receipt.acknowledged === receipt.total) {
         setDelivery('sent');
-        setActionNotice(`${receipt.total}台のPCが受領を確認しました。`);
+        setActionNotice(formatString(t.receiptConfirmed, { acknowledged: receipt.total }));
         return;
       }
       if (receipt.expired > 0) {
         setDelivery('expired');
-        setActionNotice(`${receipt.acknowledged} / ${receipt.total}台のPCが受領を確認しました。未確認の送信先は期限切れです。`);
+        setActionNotice(formatString(t.receiptExpired, { acknowledged: receipt.acknowledged, total: receipt.total }));
         return;
       }
       setDelivery('waiting');
-      setActionNotice(`${receipt.acknowledged} / ${receipt.total}台のPCが受領を確認中です。`);
+      setActionNotice(formatString(t.receiptWaiting, { acknowledged: receipt.acknowledged, total: receipt.total }));
       receiptTimer.current = setTimeout(() => { void pollHandoffReceipt(handoffs, generation); }, 1_000);
     } catch (error) {
       if (generation !== scanGeneration.current) return;
       const code = error instanceof Error ? (error as { code?: string }).code : '';
       if (code === 'unauthorized' || code === 'not_paired') setPaired(false);
       setDelivery('waiting');
-      setActionNotice('PCの受領状態を再確認しています…');
+      setActionNotice(t.deliveriesFailed);
       receiptTimer.current = setTimeout(() => { void pollHandoffReceipt(handoffs, generation); }, 3_000);
     }
   };
@@ -165,14 +173,14 @@ export default function ScannerScreen() {
       const response = await sendHandoff(candidate.data);
       if (generation !== scanGeneration.current) return;
       setDelivery('waiting');
-      setActionNotice(`0 / ${response.total}台のPCが受領を確認中です。`);
+      setActionNotice(formatString(t.receiptWaiting, { acknowledged: 0, total: response.total }));
       void pollHandoffReceipt(response.handoffs, generation);
     }
     catch (error) {
       if (generation !== scanGeneration.current) return;
       if (error instanceof Error && ['unauthorized', 'not_paired'].includes((error as { code?: string }).code ?? '')) setPaired(false);
       setDelivery('failed');
-      setActionNotice(error instanceof Error ? error.message : 'PCへ送信できませんでした。');
+      setActionNotice(handoffErrorMessage(t, error));
     }
   };
 
@@ -188,10 +196,10 @@ export default function ScannerScreen() {
     setCandidates(nextCandidates);
     setSelectedCandidateId(nextCandidates[0]?.id ?? null);
     setPhase('picking');
-    setActionNotice('候補を選んでからPCへ届けます。');
+    setActionNotice(candidatePickNotice);
     if (process.env.EXPO_OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     return true;
-  }, [freezePreview]);
+  }, [freezePreview, candidatePickNotice]);
 
   const finalizeBarcodeAcquisition = async (generation: number) => {
     const activeAcquisition = acquisition.current;
@@ -214,7 +222,7 @@ export default function ScannerScreen() {
     const candidate = nextCandidates[0];
     setResult(candidate);
     setPhase('result');
-    setActionNotice('この結果をPCへ送ります。続けてで取り消せます。');
+    setActionNotice(t.deliveryPrompt);
     if (process.env.EXPO_OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     autoDeliveryTimer.current = setTimeout(() => {
       if (generation === scanGeneration.current) void sendCandidate(candidate, generation);
@@ -230,7 +238,7 @@ export default function ScannerScreen() {
       const timer = setTimeout(() => { void finalizeBarcodeAcquisition(generation); }, 600);
       acquisition.current = { scans: [], timer, generation, detectionEpoch: nextEpoch };
       setPhase('acquiring');
-      setActionNotice('候補を確認しています…');
+      setActionNotice(t.candidateChecking);
     }
     acquisition.current.scans.push(scan);
   };
@@ -294,7 +302,7 @@ export default function ScannerScreen() {
   const copyCandidate = async (candidate: ScanCandidate | null) => {
     if (!candidate) return;
     await Clipboard.setStringAsync(candidate.data);
-    setActionNotice('コピーしました。');
+    setActionNotice(t.deliveryCopied);
   };
   const openCandidate = async (candidate: ScanCandidate | null) => {
     const url = candidate?.url ? toHttpUrl(candidate.url) : candidate ? toHttpUrl(candidate.data) : null;
@@ -305,22 +313,22 @@ export default function ScannerScreen() {
     setResult(selectedCandidate);
     setCandidates([]);
     setPhase('result');
-    setActionNotice('PCへ送信しています…');
+    setActionNotice(t.deliveryToPc);
     void sendCandidate(selectedCandidate, scanGeneration.current);
   };
-  if (!permission) return <View style={styles.center}><Text style={styles.loadingText}>カメラを準備しています…</Text></View>;
+  if (!permission) return <View style={styles.center}><Text style={styles.loadingText}>{t.cameraPreparing}</Text></View>;
   if (!permission.granted) {
     const permanentlyDenied = !permission.canAskAgain;
     return <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.permissionContainer}>
-      <Text style={styles.permissionTitle}>カメラへのアクセスが必要です</Text>
-      <Text selectable style={styles.permissionBody}>QRコード・バーコード・印刷URLをこの端末内で読み取るためにだけ使用します。画像は送信しません。</Text>
-      {permanentlyDenied && <Text selectable style={styles.permissionBody}>カメラを許可するには、端末の設定でこのアプリのカメラアクセスをオンにしてください。</Text>}
-      <Pressable style={styles.primaryButton} onPress={permanentlyDenied ? Linking.openSettings : requestPermission}><Text style={styles.primaryButtonText}>{permanentlyDenied ? '設定を開く' : 'カメラを許可'}</Text></Pressable>
+      <Text style={styles.permissionTitle}>{t.cameraAccessRequired}</Text>
+      <Text selectable style={styles.permissionBody}>{t.cameraPurpose}</Text>
+      {permanentlyDenied && <Text selectable style={styles.permissionBody}>{t.cameraSettingsHint}</Text>}
+      <Pressable accessibilityRole="button" style={styles.primaryButton} onPress={permanentlyDenied ? Linking.openSettings : requestPermission}><Text style={styles.primaryButtonText}>{permanentlyDenied ? t.openSettings : t.allowCamera}</Text></Pressable>
     </ScrollView>;
   }
 
   const url = displayCandidate?.url ? toHttpUrl(displayCandidate.url) : displayCandidate ? toHttpUrl(displayCandidate.data) : null;
-  const deliveryCopy = { idle: pairingReady ? paired ? 'PCへ自動送信' : 'PC未連携' : 'PC状態を確認中…', sending: 'PCへ送信中…', waiting: 'PCの受領を確認中…', sent: 'PCへ送信済み', expired: 'PCの受領を確認できませんでした', failed: '送信できませんでした', not_paired: 'PC連携で自動送信' }[delivery];
+  const deliveryCopy = { idle: pairingReady ? paired ? t.pcStateAutoSend : t.pcNeedLink : t.pcStateChecking, sending: t.pcSending, waiting: t.pcWaiting, sent: t.pcSent, expired: t.pcExpired, failed: t.pcFailed, not_paired: t.pcLinkForAutoSend }[delivery];
   return <View
     style={styles.screen}
     onTouchStart={startPinch}
@@ -330,10 +338,10 @@ export default function ScannerScreen() {
     <CameraView ref={cameraRef} key={cameraSession} facing="back" enableTorch={torch} zoom={zoom} barcodeScannerSettings={{ barcodeTypes }} onCameraReady={() => { setCameraReady(true); if (phase === 'ready') scanLocked.current = false; }} onBarcodeScanned={['ready', 'acquiring'].includes(phase) && pairingReady && cameraReady ? onBarcodeScanned : undefined} style={StyleSheet.absoluteFill} />
     <View pointerEvents="none" style={styles.cameraTint} />
     <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
-      <View><Text style={styles.brand}>QR Scan</Text><Text style={styles.deliveryPill}>{result ? deliveryCopy : paired ? 'PCに自動送信' : 'PCと連携して使う'}</Text></View>
+      <View><Text style={styles.brand}>{t.appName}</Text><Text style={styles.deliveryPill}>{result ? deliveryCopy : paired ? t.pcAutoSend : t.pcStateConnect}</Text></View>
       <View style={styles.topActions}>
-        <Pressable accessibilityLabel="ライト" style={styles.topAction} onPress={() => setTorch((value) => !value)}><Text style={styles.topActionText}>{torch ? '☀' : '◐'}</Text></Pressable>
-        <Pressable accessibilityLabel="PC連携設定" style={styles.topAction} onPress={() => router.push('/pair')}><Text style={styles.topActionText}>PC</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={torch ? t.torchOn : t.torchOff} style={styles.topAction} onPress={() => setTorch((value) => !value)}><Text style={styles.topActionText}>{torch ? '☀' : '◐'}</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={t.pcLinkSettings} style={styles.topAction} onPress={() => router.push('/pair')}><Text style={styles.topActionText}>PC</Text></Pressable>
       </View>
     </View>
     <View pointerEvents="none" style={styles.viewfinder}>
@@ -341,51 +349,37 @@ export default function ScannerScreen() {
       <View style={[styles.corner, styles.cornerBottomLeft]} /><View style={[styles.corner, styles.cornerBottomRight]} />
     </View>
     <View style={[styles.zoomRail, { top: insets.top + 186 }]}>
-      {zoomPresets.map((preset) => <Pressable key={preset.label} accessibilityLabel={`${preset.label}にズーム`} style={styles.zoomPreset} onPress={() => setZoom(preset.value)}><Text style={[styles.zoomPresetText, Math.abs(zoom - preset.value) < 0.08 && styles.zoomPresetTextActive]}>{preset.label}</Text></Pressable>)}
+      {zoomPresets.map((preset) => <Pressable key={preset.label} accessibilityRole="button" accessibilityLabel={`${preset.label}${t.zoomTo}`} style={styles.zoomPreset} onPress={() => setZoom(preset.value)}><Text style={[styles.zoomPresetText, Math.abs(zoom - preset.value) < 0.08 && styles.zoomPresetTextActive]}>{preset.label}</Text></Pressable>)}
       <View style={styles.zoomTrack}><View style={[styles.zoomThumb, { bottom: `${zoom * 100}%` }]} /></View>
       <Text selectable style={styles.currentZoom}>{zoomLabel(zoom)}</Text>
     </View>
     {phase === 'picking' && selectedCandidate ? candidates.map((candidate, index) => {
       const position = markerPosition(candidate, capturedFrame, viewport);
       if (!position) return null;
-      return <Pressable key={candidate.id} accessibilityLabel={`候補 ${index + 1} を選ぶ`} style={[styles.candidateMarker, { left: Math.max(12, Math.min(viewport.width - 48, position.x)), top: Math.max(insets.top + 64, Math.min(viewport.height - 220, position.y)) }, candidate.id === selectedCandidate.id && styles.candidateMarkerActive]} onPress={() => setSelectedCandidateId(candidate.id)}><Text style={styles.candidateMarkerText}>{index + 1}</Text></Pressable>;
+      return <Pressable key={candidate.id} accessibilityRole="button" accessibilityLabel={`${index + 1}: ${t.candidateSelect}`} style={[styles.candidateMarker, { left: Math.max(12, Math.min(viewport.width - 48, position.x)), top: Math.max(insets.top + 64, Math.min(viewport.height - 220, position.y)) }, candidate.id === selectedCandidate.id && styles.candidateMarkerActive]} onPress={() => setSelectedCandidateId(candidate.id)}><Text style={styles.candidateMarkerText}>{index + 1}</Text></Pressable>;
     }) : null}
     {['ready', 'acquiring'].includes(phase) && <View style={[styles.scanHint, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-      <Text style={styles.scanHintText}>{!pairingReady ? 'PC連携の状態を確認しています…' : !cameraReady ? 'カメラを再開しています…' : phase === 'acquiring' ? '候補を確認しています…' : isOcrAvailable() ? 'QRコード・印刷URLを枠に合わせてください' : 'QRコードを枠に合わせてください'}</Text>
+      <Text style={styles.scanHintText}>{!pairingReady ? t.pcStateChecking : !cameraReady ? t.scannerResuming : phase === 'acquiring' ? t.candidateChecking : isOcrAvailable() ? t.candidatePromptQr : t.candidatePromptReady}</Text>
       {actionNotice && phase === 'ready' ? <Text selectable style={styles.scanNotice}>{actionNotice}</Text> : null}
     </View>}
     {phase === 'picking' && selectedCandidate && <View style={[styles.resultOverlay, { paddingBottom: Math.max(insets.bottom, 16) }]}><View style={styles.resultCard}>
-      <View style={styles.resultHeader}><View style={styles.selectionDot} /><Text selectable style={styles.deliveryText}>{selectedCandidate.type === 'ocr' ? '文字リンク候補' : '読み取り候補'}</Text><Pressable style={styles.scanAgain} onPress={() => scanAgain()}><Text style={styles.scanAgainText}>撮り直す</Text></Pressable></View>
-      <View style={styles.candidateNavigator}><Pressable disabled={candidates.length < 2} style={styles.candidateNavButton} onPress={() => { const index = candidates.findIndex((candidate) => candidate.id === selectedCandidate.id); setSelectedCandidateId(candidates[(index - 1 + candidates.length) % candidates.length]?.id ?? null); }}><Text style={styles.candidateNavText}>前へ</Text></Pressable><Text selectable style={styles.candidateCount}>{candidates.findIndex((candidate) => candidate.id === selectedCandidate.id) + 1} / {candidates.length}</Text><Pressable disabled={candidates.length < 2} style={styles.candidateNavButton} onPress={() => { const index = candidates.findIndex((candidate) => candidate.id === selectedCandidate.id); setSelectedCandidateId(candidates[(index + 1) % candidates.length]?.id ?? null); }}><Text style={styles.candidateNavText}>次へ</Text></Pressable></View>
+      <View style={styles.resultHeader}><View style={styles.selectionDot} /><Text selectable style={styles.deliveryText}>{selectedCandidate.type === 'ocr' ? t.candidateKindOcr : t.candidateKindRead}</Text><Pressable accessibilityRole="button" style={styles.scanAgain} onPress={() => scanAgain()}><Text style={styles.scanAgainText}>{t.candidateRetake}</Text></Pressable></View>
+      <View style={styles.candidateNavigator}><Pressable accessibilityRole="button" disabled={candidates.length < 2} style={styles.candidateNavButton} onPress={() => { const index = candidates.findIndex((candidate) => candidate.id === selectedCandidate.id); setSelectedCandidateId(candidates[(index - 1 + candidates.length) % candidates.length]?.id ?? null); }}><Text style={styles.candidateNavText}>{t.candidatePrevious}</Text></Pressable><Text selectable style={styles.candidateCount}>{candidates.findIndex((candidate) => candidate.id === selectedCandidate.id) + 1} / {candidates.length}</Text><Pressable accessibilityRole="button" disabled={candidates.length < 2} style={styles.candidateNavButton} onPress={() => { const index = candidates.findIndex((candidate) => candidate.id === selectedCandidate.id); setSelectedCandidateId(candidates[(index + 1) % candidates.length]?.id ?? null); }}><Text style={styles.candidateNavText}>{t.candidateNext}</Text></Pressable></View>
       {url && <Text selectable numberOfLines={1} style={styles.host}>{url.host}</Text>}
       <Text selectable numberOfLines={2} style={styles.value}>{selectedCandidate.data}</Text>
       {actionNotice ? <Text selectable numberOfLines={2} style={styles.actionNotice}>{actionNotice}</Text> : null}
-      <View style={styles.resultActions}>{url && <Pressable style={styles.copyAction} onPress={() => { void openCandidate(selectedCandidate); }}><Text style={styles.copyActionText}>開く</Text></Pressable>}<Pressable style={styles.copyAction} onPress={() => { void copyCandidate(selectedCandidate); }}><Text style={styles.copyActionText}>コピー</Text></Pressable><Pressable style={styles.openAction} onPress={deliverSelectedCandidate}><Text style={styles.openActionText}>PCに届ける</Text></Pressable></View>
+      <View style={styles.resultActions}>{url && <Pressable accessibilityRole="button" style={styles.copyAction} onPress={() => { void openCandidate(selectedCandidate); }}><Text style={styles.copyActionText}>{t.candidateOpen}</Text></Pressable>}<Pressable accessibilityRole="button" style={styles.copyAction} onPress={() => { void copyCandidate(selectedCandidate); }}><Text style={styles.copyActionText}>{t.candidateCopy}</Text></Pressable><Pressable accessibilityRole="button" style={styles.openAction} onPress={deliverSelectedCandidate}><Text style={styles.openActionText}>{t.candidateSendPc}</Text></Pressable></View>
     </View></View>}
     {result && <View style={[styles.resultOverlay, { paddingBottom: Math.max(insets.bottom, 16) }]}><View style={styles.resultCard}>
-      <View style={styles.resultHeader}><View style={[styles.deliveryDot, delivery === 'sent' && styles.deliveryDotSent, (delivery === 'failed' || delivery === 'expired') && styles.deliveryDotFailed]} /><Text selectable style={styles.deliveryText}>{deliveryCopy}</Text><Pressable style={styles.scanAgain} onPress={() => scanAgain()}><Text style={styles.scanAgainText}>続けて</Text></Pressable></View>
+      <View style={styles.resultHeader}><View style={[styles.deliveryDot, delivery === 'sent' && styles.deliveryDotSent, (delivery === 'failed' || delivery === 'expired') && styles.deliveryDotFailed]} /><Text selectable style={styles.deliveryText}>{deliveryCopy}</Text><Pressable accessibilityRole="button" style={styles.scanAgain} onPress={() => scanAgain()}><Text style={styles.scanAgainText}>{t.deliveryContinue}</Text></Pressable></View>
       {url && <Text selectable numberOfLines={1} style={styles.host}>{url.host}</Text>}
       <Text selectable numberOfLines={2} style={styles.value}>{result.data}</Text>
       {actionNotice ? <Text selectable numberOfLines={2} style={[styles.actionNotice, (delivery === 'failed' || delivery === 'expired') && styles.actionNoticeError]}>{actionNotice}</Text> : null}
       <View style={styles.resultActions}>
-        {url && <Pressable style={styles.openAction} onPress={() => { void openCandidate(result); }}><Text style={styles.openActionText}>開く</Text></Pressable>}
-        <Pressable style={styles.copyAction} onPress={() => { void copyCandidate(result); }}><Text style={styles.copyActionText}>コピー</Text></Pressable>
-        {delivery === 'not_paired' && <Pressable style={styles.pairAction} onPress={() => router.push('/pair')}><Text style={styles.copyActionText}>PC連携</Text></Pressable>}
+        {url && <Pressable accessibilityRole="button" style={styles.openAction} onPress={() => { void openCandidate(result); }}><Text style={styles.openActionText}>{t.candidateOpen}</Text></Pressable>}
+        <Pressable accessibilityRole="button" style={styles.copyAction} onPress={() => { void copyCandidate(result); }}><Text style={styles.copyActionText}>{t.candidateCopy}</Text></Pressable>
+        {delivery === 'not_paired' && <Pressable accessibilityRole="button" style={styles.pairAction} onPress={() => router.push('/pair')}><Text style={styles.copyActionText}>{t.pairPc}</Text></Pressable>}
       </View>
     </View></View>}
   </View>;
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, overflow: 'hidden', backgroundColor: '#06142D' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#071B41' }, loadingText: { color: '#DCE8FF', fontSize: 16 },
-  permissionContainer: { flexGrow: 1, justifyContent: 'center', padding: 24, gap: 16, backgroundColor: '#F7FAFF' }, permissionTitle: { color: '#0D1B3E', fontSize: 28, fontWeight: '800', letterSpacing: -0.5 }, permissionBody: { color: '#52627C', fontSize: 16, lineHeight: 25 },
-  primaryButton: { minHeight: 52, alignItems: 'center', justifyContent: 'center', borderRadius: 13, borderCurve: 'continuous', backgroundColor: '#1463F3' }, primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
-  cameraTint: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(2, 10, 25, .18)' }, topBar: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 20 },
-  brand: { color: '#FFFFFF', fontSize: 27, fontWeight: '800', letterSpacing: -0.8, textShadowColor: 'rgba(0, 0, 0, .45)', textShadowRadius: 8 }, deliveryPill: { alignSelf: 'flex-start', marginTop: 7, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 99, overflow: 'hidden', backgroundColor: 'rgba(5, 20, 52, .72)', color: '#AFCBFF', fontSize: 12, fontWeight: '800' },
-  topActions: { flexDirection: 'row', gap: 9 }, topAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(203, 223, 255, .36)', borderRadius: 22, backgroundColor: 'rgba(5, 20, 52, .76)' }, topActionText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
-  viewfinder: { position: 'absolute', top: '26%', left: '12%', right: '18%', bottom: '31%' }, corner: { position: 'absolute', width: 38, height: 38, borderColor: '#FFFFFF', borderRadius: 8, borderCurve: 'continuous' }, cornerTopLeft: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3 }, cornerTopRight: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3 }, cornerBottomLeft: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3 }, cornerBottomRight: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3 },
-  zoomRail: { position: 'absolute', right: 16, alignItems: 'center', gap: 7, paddingVertical: 12, paddingHorizontal: 8, borderWidth: 1, borderColor: 'rgba(166, 199, 255, .25)', borderRadius: 22, backgroundColor: 'rgba(4, 18, 47, .72)' }, zoomPreset: { width: 38, minHeight: 28, alignItems: 'center', justifyContent: 'center' }, zoomPresetText: { color: '#B9CAE9', fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] }, zoomPresetTextActive: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' }, zoomTrack: { width: 2, height: 72, borderRadius: 2, backgroundColor: 'rgba(255, 255, 255, .36)', overflow: 'visible' }, zoomThumb: { position: 'absolute', left: -5, width: 12, height: 12, borderRadius: 6, backgroundColor: '#4C91FF', borderWidth: 2, borderColor: '#DCEBFF' }, currentZoom: { color: '#FFFFFF', fontSize: 12, fontWeight: '900', fontVariant: ['tabular-nums'] },
-  scanHint: { position: 'absolute', left: 24, right: 90, bottom: 18, alignItems: 'flex-start', gap: 9 }, scanHintText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700', textShadowColor: 'rgba(0, 0, 0, .65)', textShadowRadius: 7 }, scanNotice: { color: '#C7DBFF', fontSize: 12, lineHeight: 17, textShadowColor: 'rgba(0, 0, 0, .65)', textShadowRadius: 7 }, candidateMarker: { position: 'absolute', zIndex: 3, width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFFFFF', borderRadius: 18, backgroundColor: 'rgba(5, 20, 52, .86)' }, candidateMarkerActive: { borderColor: '#BBD9FF', backgroundColor: '#2476F3', transform: [{ scale: 1.12 }] }, candidateMarkerText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900', fontVariant: ['tabular-nums'] },
-  resultOverlay: { position: 'absolute', left: 16, right: 16, bottom: 0 }, resultCard: { gap: 9, padding: 15, borderWidth: 1, borderColor: 'rgba(185, 209, 255, .44)', borderRadius: 20, borderCurve: 'continuous', backgroundColor: 'rgba(5, 18, 46, .94)', boxShadow: '0 12px 32px rgba(0, 0, 0, .3)' }, resultHeader: { flexDirection: 'row', alignItems: 'center', gap: 7 }, deliveryDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#9AA9C1' }, selectionDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#79AEFF' }, deliveryDotSent: { backgroundColor: '#46D58E' }, deliveryDotFailed: { backgroundColor: '#FF7777' }, deliveryText: { flex: 1, color: '#C8D8F4', fontSize: 13, fontWeight: '800' }, scanAgain: { minHeight: 32, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center' }, scanAgainText: { color: '#8CB9FF', fontSize: 13, fontWeight: '800' }, candidateNavigator: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 9, paddingVertical: 2 }, candidateNavButton: { minHeight: 32, minWidth: 54, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#567EBA', borderRadius: 10, borderCurve: 'continuous' }, candidateNavText: { color: '#CFE1FF', fontSize: 12, fontWeight: '800' }, candidateCount: { color: '#FFFFFF', fontSize: 13, fontWeight: '900', fontVariant: ['tabular-nums'] }, host: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' }, value: { color: '#D4DEF1', fontSize: 13, lineHeight: 18, fontFamily: process.env.EXPO_OS === 'ios' ? 'Menlo' : 'monospace' }, actionNotice: { color: '#AFCBFF', fontSize: 12, lineHeight: 17 }, actionNoticeError: { color: '#FFB0B0' }, resultActions: { flexDirection: 'row', gap: 9, marginTop: 2 }, openAction: { flex: 1, minHeight: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderCurve: 'continuous', backgroundColor: '#2476F3' }, openActionText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' }, copyAction: { flex: 1, minHeight: 42, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#789ED6', borderRadius: 12, borderCurve: 'continuous' }, copyActionText: { color: '#CFE1FF', fontSize: 14, fontWeight: '900' }, pairAction: { flex: 1, minHeight: 42, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#789ED6', borderRadius: 12, borderCurve: 'continuous' },
-});

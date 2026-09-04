@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "qrscan",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.snkisk.qrscan",
@@ -25,7 +25,8 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.snkisk.qrscan",
       "permissions": [
-        "CAMERA"
+        "CAMERA",
+        "android.permission.CAMERA"
       ]
     },
     "web": {
@@ -54,6 +55,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c71c2a4a-c7e2-4a51-b88b-3c2781cac2be"
+      }
     }
   }
 }

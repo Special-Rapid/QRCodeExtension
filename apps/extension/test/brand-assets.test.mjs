@@ -2,20 +2,20 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { PNG } from "pngjs";
-import { generate } from "../scripts/generate-brand-assets.mjs";
+import { generate } from "../../../tooling/generate-brand-assets.mjs";
 
 test("all raster icons are current derivations of the canonical SVG", async () => {
   await generate({ check: true });
 });
 
 test("web receiver uses the canonical icon for both favicon and visible brand", async () => {
-  const html = await readFile("apps/handoff/public/index.html", "utf8");
+  const html = await readFile("../handoff/public/index.html", "utf8");
   assert.match(html, /rel="icon"[^>]+href="\/icon-128\.png"/u);
   assert.match(html, /class="brand-mark"[^>]+src="\/icon-128\.png"/u);
 });
 
 test("the iOS Icon Composer asset references the SVG derivative instead of a separate mark", async () => {
-  const icon = await readFile("apps/mobile/assets/expo.icon/icon.json", "utf8");
+  const icon = await readFile("../mobile/assets/expo.icon/icon.json", "utf8");
   assert.match(icon, /"image-name"\s*:\s*"qr-scan-icon\.svg"/u);
 });
 

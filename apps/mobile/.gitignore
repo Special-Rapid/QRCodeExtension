@@ -38,6 +38,12 @@ yarn-error.*
 
 example
 
-# generated native folders
-/ios
-/android
+# Native project sources are intentionally tracked. Keep only local build and
+# developer-machine artifacts out of Git through ios/.gitignore and android/.gitignore.
+# Native modules can also create these machine-local artifacts outside the app
+# project directories.
+**/.gradle/
+**/build/
+**/.cxx/
+**/local.properties
+**/debug.keystore

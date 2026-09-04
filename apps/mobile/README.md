@@ -7,7 +7,7 @@ iPhoneとAndroidで動くQR／バーコードスキャナーです。カメラ�
 ```sh
 npm install
 npm run check
-./script/build_and_run.sh
+./scripts/build_and_run.sh
 ```
 
 Expo Goで表示されたQRコードを読み取ると、iOS／Androidの実機で起動できます。直接起動する場合は `--ios` または `--android` を渡してください。

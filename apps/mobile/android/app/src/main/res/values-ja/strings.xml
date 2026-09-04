@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="quick_settings_scan_label">QRをスキャン</string>
+  <string name="quick_settings_scan_description">QR Scanのカメラを開く</string>
+</resources>

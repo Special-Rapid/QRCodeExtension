@@ -7,7 +7,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const source = path.join(root, "assets/brand/qr-scan-icon.svg");
 const targets = [
   { file: "apps/mobile/assets/expo.icon/Assets/qr-scan-icon.svg", kind: "svg" },
-  { file: "src/icon-128.png", size: 128, layers: "full" },
+  { file: "apps/extension/src/icon-128.png", size: 128, layers: "full" },
   { file: "apps/handoff/public/icon-128.png", size: 128, layers: "full" },
   { file: "apps/mobile/assets/images/icon.png", size: 1024, layers: "full" },
   { file: "apps/mobile/assets/images/favicon.png", size: 48, layers: "full" },
@@ -15,6 +15,7 @@ const targets = [
   { file: "apps/mobile/assets/images/android-icon-background.png", size: 512, layers: "background" },
   { file: "apps/mobile/assets/images/android-icon-foreground.png", size: 512, layers: "foreground" },
   { file: "apps/mobile/assets/images/android-icon-monochrome.png", size: 432, layers: "foreground" },
+  { file: "apps/mobile/android/app/src/main/res/drawable/ic_qr_scan_tile.xml", kind: "android-vector", layers: "foreground" },
 ];
 
 function attributes(sourceText) {
@@ -69,17 +70,23 @@ export function renderIcon(icon, target) {
   return PNG.sync.write(png);
 }
 
+export function renderAndroidTileIcon(icon) {
+  const rectanglePath = (rectangle) => `M${rectangle.x},${rectangle.y}h${rectangle.width}v${rectangle.height}h-${rectangle.width}z`;
+  const pathData = [...icon.layers.foreground, ...icon.layers.cutout].map(rectanglePath).join(" ");
+  return Buffer.from(`<?xml version="1.0" encoding="utf-8"?>\n<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="${icon.size}" android:viewportHeight="${icon.size}">\n  <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="${pathData}"/>\n</vector>\n`);
+}
+
 export async function generate({ check = false } = {}) {
   const svg = await readFile(source, "utf8");
   const icon = parseIcon(svg);
   const mismatches = [];
   for (const target of targets) {
-    const expected = target.kind === "svg" ? Buffer.from(svg) : renderIcon(icon, target);
+    const expected = target.kind === "svg" ? Buffer.from(svg) : target.kind === "android-vector" ? renderAndroidTileIcon(icon) : renderIcon(icon, target);
     const destination = path.join(root, target.file);
     if (check) {
       let currentBuffer;
       try { currentBuffer = await readFile(destination); } catch { mismatches.push(target.file); continue; }
-      if (target.kind === "svg") {
+      if (target.kind === "svg" || target.kind === "android-vector") {
         if (!currentBuffer.equals(expected)) mismatches.push(target.file);
         continue;
       }
