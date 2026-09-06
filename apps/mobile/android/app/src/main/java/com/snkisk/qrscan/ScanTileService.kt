@@ -2,12 +2,11 @@ package com.snkisk.qrscan
 
 import android.app.PendingIntent
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 
-/** Opens the existing QR Scan camera flow from Android Quick Settings. */
+/** Starts a user-approved, one-frame Android screen capture from Quick Settings. */
 class ScanTileService : TileService() {
   override fun onStartListening() {
     super.onStartListening()
@@ -28,8 +27,7 @@ class ScanTileService : TileService() {
   }
 
   private fun openScanner() {
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("qrscan://scan?entry=quick-settings")).apply {
-      setPackage(packageName)
+    val intent = Intent(this, expo.modules.qrscanocr.ScreenCaptureActivity::class.java).apply {
       addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
     }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {

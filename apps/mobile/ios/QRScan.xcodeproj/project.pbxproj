@@ -16,6 +16,8 @@
 		A00000000000000000000013 /* QRScanIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000011 /* QRScanIntent.swift */; };
 		A00000000000000000000014 /* QRScanControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000015 /* QRScanControls.swift */; };
 		A00000000000000000000040 /* QRScanControls.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = A00000000000000000000020 /* QRScanControls.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A10000000000000000000001 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* ShareViewController.swift */; };
+		A10000000000000000000002 /* QRScanShare.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = A10000000000000000000020 /* QRScanShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A00000000000000000000051 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000050 /* Localizable.strings */; };
 		A00000000000000000000057 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000056 /* Localizable.strings */; };
 		A310D25F7BDB4DF4A7704888 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 4E142F7DABC996FA8941FFD7 /* PrivacyInfo.xcprivacy */; };
@@ -31,6 +33,13 @@
 			remoteGlobalIDString = A00000000000000000000022;
 			remoteInfo = QRScanControls;
 		};
+		A10000000000000000000003 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A10000000000000000000022;
+			remoteInfo = QRScanShare;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -41,6 +50,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				A00000000000000000000040 /* QRScanControls.appex in Embed App Extensions */,
+				A10000000000000000000002 /* QRScanShare.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -58,6 +68,10 @@
 		A00000000000000000000015 /* QRScanControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScanControls.swift; sourceTree = "<group>"; };
 		A00000000000000000000017 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A00000000000000000000020 /* QRScanControls.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = QRScanControls.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000011 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		A10000000000000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A10000000000000000000013 /* QRScanShare.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = QRScanShare.entitlements; sourceTree = "<group>"; };
+		A10000000000000000000020 /* QRScanShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = QRScanShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A00000000000000000000052 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		A00000000000000000000053 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		A00000000000000000000054 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = QRScan/en.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -82,6 +96,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		A00000000000000000000025 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000025 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -138,6 +159,7 @@
 			children = (
 				13B07FAE1A68108700A75B9A /* QRScan */,
 				A00000000000000000000021 /* QRScanControls */,
+				A10000000000000000000021 /* QRScanShare */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
@@ -154,6 +176,7 @@
 			children = (
 				13B07F961A680F5B00A75B9A /* QRScan.app */,
 				A00000000000000000000020 /* QRScanControls.appex */,
+				A10000000000000000000020 /* QRScanShare.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -167,6 +190,16 @@
 				A00000000000000000000050 /* Localizable.strings */,
 			);
 			path = QRScanControls;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000021 /* QRScanShare */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000011 /* ShareViewController.swift */,
+				A10000000000000000000012 /* Info.plist */,
+				A10000000000000000000013 /* QRScanShare.entitlements */,
+			);
+			path = QRScanShare;
 			sourceTree = "<group>";
 		};
 		B21214810116AE437773124A /* ExpoModulesProviders */ = {
@@ -215,6 +248,7 @@
 			);
 			dependencies = (
 				A00000000000000000000043 /* PBXTargetDependency */,
+				A10000000000000000000043 /* PBXTargetDependency */,
 			);
 			name = QRScan;
 			productName = QRScan;
@@ -238,6 +272,23 @@
 			productReference = A00000000000000000000020 /* QRScanControls.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		A10000000000000000000022 /* QRScanShare */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000023 /* Build configuration list for PBXNativeTarget "QRScanShare" */;
+			buildPhases = (
+				A10000000000000000000024 /* Sources */,
+				A10000000000000000000025 /* Frameworks */,
+				A10000000000000000000026 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = QRScanShare;
+			productName = QRScanShare;
+			productReference = A10000000000000000000020 /* QRScanShare.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -250,6 +301,9 @@
 						LastSwiftMigration = 1250;
 					};
 					A00000000000000000000022 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					A10000000000000000000022 = {
 						CreatedOnToolsVersion = 26.0;
 					};
 				};
@@ -270,6 +324,7 @@
 			targets = (
 				13B07F861A680F5B00A75B9A /* QRScan */,
 				A00000000000000000000022 /* QRScanControls */,
+				A10000000000000000000022 /* QRScanShare */,
 			);
 		};
 /* End PBXProject section */
@@ -293,6 +348,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				A00000000000000000000051 /* Localizable.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000026 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -468,6 +530,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A10000000000000000000024 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000001 /* ShareViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -475,6 +545,11 @@
 			isa = PBXTargetDependency;
 			target = A00000000000000000000022 /* QRScanControls */;
 			targetProxy = A00000000000000000000042 /* PBXContainerItemProxy */;
+		};
+		A10000000000000000000043 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A10000000000000000000022 /* QRScanShare */;
+			targetProxy = A10000000000000000000003 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -752,6 +827,54 @@
 			};
 			name = Release;
 		};
+		A10000000000000000000031 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = QRScanShare/QRScanShare.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = QRScanShare/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.snkisk.qrscan.share;
+				PRODUCT_NAME = QRScanShare;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A10000000000000000000032 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = QRScanShare/QRScanShare.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = QRScanShare/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.snkisk.qrscan.share;
+				PRODUCT_NAME = QRScanShare;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -778,6 +901,15 @@
 			buildConfigurations = (
 				A00000000000000000000031 /* Debug */,
 				A00000000000000000000032 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A10000000000000000000023 /* Build configuration list for PBXNativeTarget "QRScanShare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000031 /* Debug */,
+				A10000000000000000000032 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

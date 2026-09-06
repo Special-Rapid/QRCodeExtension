@@ -4,15 +4,16 @@ import test from 'node:test';
 
 const read = (path) => readFile(new URL(path, import.meta.url), 'utf8');
 
-test('Android Tile opens only the private scanner deep link without overlay permission', async () => {
+test('Android Tile starts one-time screen capture without overlay permission', async () => {
   const [manifest, service] = await Promise.all([
     read('../android/app/src/main/AndroidManifest.xml'),
     read('../android/app/src/main/java/com/snkisk/qrscan/ScanTileService.kt'),
   ]);
   assert.match(manifest, /android\.permission\.BIND_QUICK_SETTINGS_TILE/);
   assert.doesNotMatch(manifest, /SYSTEM_ALERT_WINDOW/);
-  assert.match(service, /qrscan:\/\/scan\?entry=quick-settings/);
-  assert.match(service, /setPackage\(packageName\)/);
+  assert.match(manifest, /FOREGROUND_SERVICE_MEDIA_PROJECTION/);
+  assert.doesNotMatch(manifest, /android\.intent\.action\.SEND/);
+  assert.match(service, /ScreenCaptureActivity/);
   assert.match(service, /PendingIntent\.FLAG_IMMUTABLE/);
 });
 

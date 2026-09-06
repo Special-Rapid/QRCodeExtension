@@ -2,14 +2,14 @@ import { CameraView, type BarcodeScanningResult, type BarcodeType, useCameraPerm
 import * as Clipboard from 'expo-clipboard';
 import { File } from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { type GestureResponderEvent, Linking, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { type GestureResponderEvent, Image, Linking, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { isOcrAvailable, recognizeUrlText } from '../../modules/qr-scan-ocr';
+import { consumeSharedImage, deleteSharedImage, isOcrAvailable, recognizeSharedImage, recognizeUrlText } from '../../modules/qr-scan-ocr';
 import { canCommitDetection, nextDetectionEpoch } from '../lib/detection-coordinator';
 import { getHandoffReceipt, getMobileDevices, loadMobileIdentity, refreshMobileIdentityLabel, sendHandoff, type HandoffTarget } from '../lib/handoff';
-import { candidateSignature, collectBarcodeCandidates, collectOcrUrlCandidates, toHttpUrl, type ScanCandidate } from '../lib/scan-candidates';
+import { candidateSignature, collectBarcodeCandidates, collectOcrUrlCandidates, dedupeCandidates, toHttpUrl, type ScanCandidate } from '../lib/scan-candidates';
 import { usePreferences } from '../lib/preferences';
 import { formatString, getStrings, handoffErrorMessage } from '../lib/strings';
 import { createSystemStyles, getPalette } from '../lib/theme';
@@ -27,16 +27,19 @@ function touchDistance(event: GestureResponderEvent) {
   const [first, second] = event.nativeEvent.touches;
   return first && second ? Math.hypot(second.pageX - first.pageX, second.pageY - first.pageY) : null;
 }
-function markerPosition(candidate: ScanCandidate, frame: CapturedFrame | null, viewport: { width: number; height: number }) {
+function markerPosition(candidate: ScanCandidate, frame: CapturedFrame | null, viewport: { width: number; height: number }, contentMode: 'cover' | 'contain' = 'cover') {
   if (!candidate.bounds) return null;
-  if (candidate.type === 'barcode' || !frame) return { x: candidate.bounds.x, y: candidate.bounds.y };
-  const scale = Math.max(viewport.width / frame.width, viewport.height / frame.height);
+  if (!frame) return { x: candidate.bounds.x, y: candidate.bounds.y };
+  const scale = contentMode === 'contain'
+    ? Math.min(viewport.width / frame.width, viewport.height / frame.height)
+    : Math.max(viewport.width / frame.width, viewport.height / frame.height);
   const offsetX = (viewport.width - frame.width * scale) / 2;
   const offsetY = (viewport.height - frame.height * scale) / 2;
   return { x: offsetX + candidate.bounds.x * scale, y: offsetY + candidate.bounds.y * scale };
 }
 
 export default function ScannerScreen() {
+  const { shareToken, captureError } = useLocalSearchParams<{ shareToken?: string; captureError?: string }>();
   const { resolvedTheme, locale } = usePreferences();
   const isDark = resolvedTheme === 'dark';
   const t = useMemo(() => getStrings(locale), [locale]);
@@ -55,6 +58,8 @@ export default function ScannerScreen() {
   const [cameraSession, setCameraSession] = useState(0);
   const [delivery, setDelivery] = useState<DeliveryState>('idle');
   const [actionNotice, setActionNotice] = useState('');
+  const [sharedImageState, setSharedImageState] = useState<'idle' | 'processing' | 'failed'>('idle');
+  const [sharedImageUri, setSharedImageUri] = useState<string | null>(null);
   const scanLocked = useRef(false);
   const cameraRef = useRef<CameraView | null>(null);
   const acquisition = useRef<{ scans: BarcodeScanningResult[]; timer: ReturnType<typeof setTimeout>; generation: number; detectionEpoch: number } | null>(null);
@@ -70,6 +75,7 @@ export default function ScannerScreen() {
   const detectionEpoch = useRef(0);
   const scanGeneration = useRef(0);
   const pinch = useRef<{ distance: number; zoom: number } | null>(null);
+  const consumedShareToken = useRef<string | null>(null);
   const insets = useSafeAreaInsets();
   const viewport = useWindowDimensions();
   const styles = useMemo(() => createSystemStyles(getPalette(isDark ? 'dark' : 'light')), [isDark]);
@@ -133,10 +139,13 @@ export default function ScannerScreen() {
     setCandidates([]);
     setSelectedCandidateId(null);
     setCapturedFrame(null);
+    setSharedImageUri(null);
     setPhase('ready');
     setDelivery('idle');
     setActionNotice(notice);
     setCameraSession((value) => value + 1);
+    if (shareToken) void deleteSharedImage(shareToken);
+    if (shareToken || captureError) router.replace('/');
   };
   const pollHandoffReceipt = async (handoffs: HandoffTarget[], generation: number) => {
     if (generation !== scanGeneration.current) return;
@@ -204,6 +213,58 @@ export default function ScannerScreen() {
     if (process.env.EXPO_OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     return true;
   }, [freezePreview, candidatePickNotice]);
+
+  useEffect(() => {
+    const token = typeof shareToken === 'string' ? shareToken : '';
+    if (!token || consumedShareToken.current === token) return;
+    consumedShareToken.current = token;
+    let active = true;
+    const generation = scanGeneration.current + 1;
+    scanGeneration.current = generation;
+    clearScanTimers();
+    scanLocked.current = true;
+    setResult(null);
+    setCandidates([]);
+    setSelectedCandidateId(null);
+    setCapturedFrame(null);
+    setSharedImageState('processing');
+    setActionNotice(t.sharedImageProcessing);
+    let retainedForSelection = false;
+    void (async () => {
+      try {
+        const uri = await consumeSharedImage(token);
+        if (!active || generation !== scanGeneration.current) return;
+        setSharedImageUri(uri);
+        const recognition = await recognizeSharedImage(uri);
+        if (!active || generation !== scanGeneration.current) return;
+        const nextCandidates = dedupeCandidates([
+          ...collectBarcodeCandidates(recognition.barcodes),
+          ...collectOcrUrlCandidates(recognition.blocks),
+        ]);
+        if (nextCandidates.length === 0) {
+          setPhase('ready');
+          setSharedImageState('failed');
+          setActionNotice(t.sharedImageNoResult);
+          scanLocked.current = false;
+          return;
+        }
+        setSharedImageState('idle');
+        retainedForSelection = await beginPicker(nextCandidates, { width: recognition.width, height: recognition.height }, generation);
+      } catch {
+        if (!active || generation !== scanGeneration.current) return;
+        setPhase('ready');
+        setSharedImageState('failed');
+        setActionNotice(t.sharedImageUnavailable);
+        scanLocked.current = false;
+      } finally {
+        if (!retainedForSelection) {
+          void deleteSharedImage(token);
+          if (active) setSharedImageUri(null);
+        }
+      }
+    })();
+    return () => { active = false; };
+  }, [beginPicker, shareToken, t.sharedImageNoResult, t.sharedImageProcessing, t.sharedImageUnavailable]);
 
   const finalizeBarcodeAcquisition = async (generation: number) => {
     const activeAcquisition = acquisition.current;
@@ -323,15 +384,21 @@ export default function ScannerScreen() {
   };
   const deliverSelectedCandidate = () => {
     if (!selectedCandidate) return;
+    if (shareToken) void deleteSharedImage(shareToken);
+    setSharedImageUri(null);
     setResult(selectedCandidate);
     setCandidates([]);
     setPhase('result');
     setActionNotice(t.deliveryToPc);
     void sendCandidate(selectedCandidate, scanGeneration.current);
   };
-  if (!permission) return <View style={styles.center}><Text style={styles.loadingText}>{t.cameraPreparing}</Text></View>;
-  if (!permission.granted) {
-    const permanentlyDenied = !permission.canAskAgain;
+  const hasSharedImage = (typeof shareToken === 'string' && shareToken.length > 0) || (typeof captureError === 'string' && captureError.length > 0);
+  const captureFailureNotice = typeof captureError === 'string' && captureError ? captureError === 'cancelled' ? t.screenCaptureCancelled : t.screenCaptureUnavailable : '';
+  if (!permission && !hasSharedImage) return <View style={styles.center}><Text style={styles.loadingText}>{t.cameraPreparing}</Text></View>;
+  if (sharedImageState === 'processing') return <View style={styles.center}><Text style={styles.loadingText}>{t.sharedImageProcessing}</Text></View>;
+  if (sharedImageState === 'failed' || captureFailureNotice) return <View style={styles.center}><Text selectable style={styles.permissionTitle}>{t.sharedImageFailedTitle}</Text><Text selectable style={styles.permissionBody}>{captureFailureNotice || actionNotice}</Text><Pressable accessibilityRole="button" style={styles.primaryButton} onPress={() => scanAgain()}><Text style={styles.primaryButtonText}>{t.sharedImageUseCamera}</Text></Pressable></View>;
+  if (!permission?.granted && !hasSharedImage) {
+    const permanentlyDenied = permission ? !permission.canAskAgain : false;
     return <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.permissionContainer}>
       <Text style={styles.permissionTitle}>{t.cameraAccessRequired}</Text>
       <Text selectable style={styles.permissionBody}>{t.cameraPurpose}</Text>
@@ -348,7 +415,9 @@ export default function ScannerScreen() {
     onTouchMove={movePinch}
     onTouchEnd={endPinch}
     onTouchCancel={endPinch}>
-    <CameraView ref={cameraRef} key={cameraSession} facing="back" animateShutter={false} enableTorch={torch} zoom={zoom} barcodeScannerSettings={{ barcodeTypes }} onCameraReady={() => { setCameraReady(true); if (phase === 'ready') scanLocked.current = false; }} onBarcodeScanned={['ready', 'acquiring'].includes(phase) && pairingReady && cameraReady ? onBarcodeScanned : undefined} style={StyleSheet.absoluteFill} />
+    {sharedImageUri && phase === 'picking'
+      ? <Image source={{ uri: sharedImageUri }} resizeMode="contain" style={StyleSheet.absoluteFill} />
+      : permission?.granted ? <CameraView ref={cameraRef} key={cameraSession} facing="back" animateShutter={false} enableTorch={torch} zoom={zoom} barcodeScannerSettings={{ barcodeTypes }} onCameraReady={() => { setCameraReady(true); if (phase === 'ready') scanLocked.current = false; }} onBarcodeScanned={['ready', 'acquiring'].includes(phase) && pairingReady && cameraReady ? onBarcodeScanned : undefined} style={StyleSheet.absoluteFill} /> : <View style={StyleSheet.absoluteFill} />}
     <View pointerEvents="none" style={styles.cameraTint} />
     <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
       <View><Text style={styles.brand}>{t.appName}</Text><Text style={styles.deliveryPill}>{result ? deliveryCopy : paired ? t.pcAutoSend : t.pcStateConnect}</Text></View>
@@ -367,7 +436,7 @@ export default function ScannerScreen() {
       <Text selectable style={styles.currentZoom}>{zoomLabel(zoom)}</Text>
     </View>
     {phase === 'picking' && selectedCandidate ? candidates.map((candidate, index) => {
-      const position = markerPosition(candidate, capturedFrame, viewport);
+      const position = markerPosition(candidate, capturedFrame, viewport, sharedImageUri ? 'contain' : 'cover');
       if (!position) return null;
       return <Pressable key={candidate.id} accessibilityRole="button" accessibilityLabel={`${index + 1}: ${t.candidateSelect}`} style={[styles.candidateMarker, { left: Math.max(12, Math.min(viewport.width - 48, position.x)), top: Math.max(insets.top + 64, Math.min(viewport.height - 220, position.y)) }, candidate.id === selectedCandidate.id && styles.candidateMarkerActive]} onPress={() => setSelectedCandidateId(candidate.id)}><Text style={styles.candidateMarkerText}>{index + 1}</Text></Pressable>;
     }) : null}

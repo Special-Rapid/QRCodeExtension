@@ -99,7 +99,7 @@ export type StringKey =
   | 'receiptConfirmed'
   | 'receiptExpired'
   | 'receiptWaiting'
-  | 'sendFailed' | 'handoffNetworkError' | 'handoffExpiredError' | 'handoffClaimedError' | 'handoffUnauthorizedError' | 'handoffNotPairedError' | 'handoffDeliveryError' | 'handoffGenericError' | 'settingsTitle' | 'settingsBody' | 'settingsOpen' | 'pcLinkEyebrow' | 'pcDevicesKicker' | 'settingsEyebrow' | 'settingsAppearanceBody' | 'settingsLanguageBody';
+  | 'sendFailed' | 'handoffNetworkError' | 'handoffExpiredError' | 'handoffClaimedError' | 'handoffUnauthorizedError' | 'handoffNotPairedError' | 'handoffDeliveryError' | 'handoffGenericError' | 'settingsTitle' | 'settingsBody' | 'settingsOpen' | 'pcLinkEyebrow' | 'pcDevicesKicker' | 'settingsEyebrow' | 'settingsAppearanceBody' | 'settingsLanguageBody' | 'sharedImageProcessing' | 'sharedImageNoResult' | 'sharedImageUnavailable' | 'sharedImageFailedTitle' | 'sharedImageUseCamera' | 'sharedImageHeading' | 'sharedImageBody' | 'screenCaptureCancelled' | 'screenCaptureUnavailable';
 
 const messages: Record<ResolvedLocale, Record<StringKey, string>> = {
   ja: {
@@ -217,6 +217,15 @@ const messages: Record<ResolvedLocale, Record<StringKey, string>> = {
     settingsEyebrow: 'この端末',
     settingsAppearanceBody: '画面の明るさを選べます。',
     settingsLanguageBody: '表示する言語を選べます。',
+    sharedImageProcessing: '共有された画像をこの端末で読み取っています…',
+    sharedImageNoResult: '画像内にQRコード・バーコード・URL文字列を見つけられませんでした。別の画像を共有するか、カメラで続けてください。',
+    sharedImageUnavailable: '共有された画像を開けませんでした。元のアプリから画像をもう一度共有してください。',
+    sharedImageFailedTitle: '画像を読み取れませんでした',
+    sharedImageUseCamera: 'カメラで続ける',
+    sharedImageHeading: '画像を共有して読み取る',
+    sharedImageBody: '写真やスクリーンショットの共有メニューで「QR Scan」を選ぶと、画像内のQRコード・バーコード・URL文字列をこの端末だけで読み取れます。',
+    screenCaptureCancelled: '画面の読み取りを取り消しました。',
+    screenCaptureUnavailable: '画面を読み取れませんでした。もう一度試してください。',
   },
   en: {
     appName: 'QR Scan',
@@ -333,6 +342,15 @@ const messages: Record<ResolvedLocale, Record<StringKey, string>> = {
     settingsEyebrow: 'This device',
     settingsAppearanceBody: 'Choose how the interface looks.',
     settingsLanguageBody: 'Choose the interface language.',
+    sharedImageProcessing: 'Reading the shared image on this device…',
+    sharedImageNoResult: 'No QR code, barcode, or URL text was found. Share another image or continue with the camera.',
+    sharedImageUnavailable: 'The shared image could not be opened. Share it again from the original app.',
+    sharedImageFailedTitle: 'Could not read the image',
+    sharedImageUseCamera: 'Continue with camera',
+    sharedImageHeading: 'Read a shared image',
+    sharedImageBody: 'Choose “QR Scan” from a photo or screenshot’s share menu to read QR codes, barcodes, and URL text on this device only.',
+    screenCaptureCancelled: 'Screen reading was cancelled.',
+    screenCaptureUnavailable: 'Could not read this screen. Try again.',
   },
 };
 

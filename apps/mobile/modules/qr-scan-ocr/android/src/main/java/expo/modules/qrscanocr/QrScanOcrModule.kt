@@ -5,6 +5,8 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.net.Uri
 import androidx.exifinterface.media.ExifInterface
+import com.google.android.gms.tasks.Tasks
+import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -49,6 +51,66 @@ class QrScanOcrModule : Module() {
         promise.reject("OCR_IMAGE_UNAVAILABLE", error.message ?: "The captured image could not be read.", error)
       }
     }
+
+    AsyncFunction("recognizeSharedImage") { uriString: String, promise: Promise ->
+      try {
+        val bitmap = loadUprightBitmap(Uri.parse(uriString))
+        val image = InputImage.fromBitmap(bitmap, 0)
+        val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+        val barcodeScanner = BarcodeScanning.getClient()
+        val textTask = textRecognizer.process(image)
+        val barcodeTask = barcodeScanner.process(image)
+        Tasks.whenAllComplete(textTask, barcodeTask)
+          .addOnCompleteListener {
+            try {
+              // Task.result throws for a failed recognizer. Keep the other recognizer's
+              // successful result available, and always settle the JS promise.
+              val textResult = if (textTask.isSuccessful) textTask.result else null
+              val barcodeResult = if (barcodeTask.isSuccessful) barcodeTask.result else null
+              if (textResult == null && barcodeResult == null) {
+                val error = textTask.exception ?: barcodeTask.exception
+                promise.reject("SHARED_IMAGE_RECOGNITION_FAILED", error?.message ?: "The shared image could not be recognized.", error)
+                return@addOnCompleteListener
+              }
+              val blocks = textResult?.textBlocks?.flatMap { block -> block.lines }?.mapNotNull { line ->
+                line.boundingBox?.let { box ->
+                  mapOf("text" to line.text, "x" to box.left, "y" to box.top, "width" to box.width(), "height" to box.height())
+                }
+              } ?: emptyList()
+              val barcodes = barcodeResult?.mapNotNull { barcode ->
+                val value = barcode.rawValue ?: return@mapNotNull null
+                barcode.boundingBox?.let { box ->
+                  mapOf(
+                    "data" to value,
+                    "type" to (barcode.format.toString()),
+                    "bounds" to mapOf("origin" to mapOf("x" to box.left, "y" to box.top), "size" to mapOf("width" to box.width(), "height" to box.height()))
+                  )
+                }
+              } ?: emptyList()
+              promise.resolve(mapOf("blocks" to blocks, "barcodes" to barcodes, "width" to image.width, "height" to image.height))
+            } catch (error: Exception) {
+              promise.reject("SHARED_IMAGE_RECOGNITION_FAILED", error.message ?: "The shared image could not be recognized.", error)
+            } finally {
+              textRecognizer.close()
+              barcodeScanner.close()
+            }
+          }
+      } catch (error: Exception) {
+        promise.reject("SHARED_IMAGE_UNAVAILABLE", error.message ?: "The shared image could not be read.", error)
+      }
+    }
+
+    AsyncFunction("consumeSharedImage") { token: String ->
+      val context = appContext.reactContext ?: throw IllegalStateException("The app context is unavailable")
+      ScreenCaptureStore.consume(context, token)?.toString()
+        ?: throw IllegalArgumentException("The shared image is unavailable or has expired")
+    }
+
+    AsyncFunction("deleteSharedImage") { token: String ->
+      val context = appContext.reactContext ?: throw IllegalStateException("The app context is unavailable")
+      ScreenCaptureStore.delete(context, token)
+    }
+
   }
 
   private fun loadUprightBitmap(uri: Uri): Bitmap {
