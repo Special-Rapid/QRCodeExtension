@@ -64,6 +64,8 @@ export default function ScannerScreen() {
   const liveOcrBusy = useRef(false);
   const liveOcrSignature = useRef<string | null>(null);
   const liveOcrMatches = useRef(0);
+  const liveOcrUnstableMatches = useRef(0);
+  const liveOcrFailures = useRef(0);
   const phaseRef = useRef<ScannerPhase>('ready');
   const detectionEpoch = useRef(0);
   const scanGeneration = useRef(0);
@@ -83,6 +85,8 @@ export default function ScannerScreen() {
     liveOcrTimer.current = null;
     liveOcrSignature.current = null;
     liveOcrMatches.current = 0;
+    liveOcrUnstableMatches.current = 0;
+    liveOcrFailures.current = 0;
   };
 
   useEffect(() => { phaseRef.current = phase; }, [phase]);
@@ -266,21 +270,30 @@ export default function ScannerScreen() {
         if (!picture || !active || generation !== scanGeneration.current || !canCommitDetection({ claimEpoch: snapshotEpoch, currentEpoch: detectionEpoch.current, phase: phaseRef.current, expectedPhase: 'ready', locked: scanLocked.current })) return;
         const recognition = await recognizeUrlText(picture.uri);
         if (!active || generation !== scanGeneration.current || !canCommitDetection({ claimEpoch: snapshotEpoch, currentEpoch: detectionEpoch.current, phase: phaseRef.current, expectedPhase: 'ready', locked: scanLocked.current })) return;
+        liveOcrFailures.current = 0;
         const nextCandidates = collectOcrUrlCandidates(recognition.blocks);
         const signature = candidateSignature(nextCandidates);
         if (!signature) {
           liveOcrSignature.current = null;
           liveOcrMatches.current = 0;
+          liveOcrUnstableMatches.current = 0;
           return;
         }
         liveOcrMatches.current = liveOcrSignature.current === signature ? liveOcrMatches.current + 1 : 1;
         liveOcrSignature.current = signature;
-        if (liveOcrMatches.current < 2) return;
+        if (liveOcrMatches.current < 2) {
+          liveOcrUnstableMatches.current += 1;
+          if (liveOcrUnstableMatches.current >= 3) setActionNotice(t.candidateTextSteady);
+          return;
+        }
+        liveOcrUnstableMatches.current = 0;
         detectionEpoch.current = nextDetectionEpoch(detectionEpoch.current);
         scanLocked.current = true;
         await beginPicker(nextCandidates, { width: recognition.width, height: recognition.height }, generation);
       } catch {
         // A transient preview frame failure must not interrupt QR scanning.
+        liveOcrFailures.current += 1;
+        if (liveOcrFailures.current >= 2 && active && generation === scanGeneration.current && phaseRef.current === 'ready') setActionNotice(t.candidateTextRetry);
       } finally {
         if (snapshotUri) {
           try { new File(snapshotUri).delete(); } catch { /* cache cleanup is best effort */ }
@@ -295,7 +308,7 @@ export default function ScannerScreen() {
       if (liveOcrTimer.current) clearTimeout(liveOcrTimer.current);
       liveOcrTimer.current = null;
     };
-  }, [beginPicker, cameraReady, cameraSession, pairingReady, phase]);
+  }, [beginPicker, cameraReady, cameraSession, pairingReady, phase, t.candidateTextRetry, t.candidateTextSteady]);
 
   const selectedCandidate = candidates.find((candidate) => candidate.id === selectedCandidateId) ?? null;
   const displayCandidate = result ?? selectedCandidate;
@@ -335,7 +348,7 @@ export default function ScannerScreen() {
     onTouchMove={movePinch}
     onTouchEnd={endPinch}
     onTouchCancel={endPinch}>
-    <CameraView ref={cameraRef} key={cameraSession} facing="back" enableTorch={torch} zoom={zoom} barcodeScannerSettings={{ barcodeTypes }} onCameraReady={() => { setCameraReady(true); if (phase === 'ready') scanLocked.current = false; }} onBarcodeScanned={['ready', 'acquiring'].includes(phase) && pairingReady && cameraReady ? onBarcodeScanned : undefined} style={StyleSheet.absoluteFill} />
+    <CameraView ref={cameraRef} key={cameraSession} facing="back" animateShutter={false} enableTorch={torch} zoom={zoom} barcodeScannerSettings={{ barcodeTypes }} onCameraReady={() => { setCameraReady(true); if (phase === 'ready') scanLocked.current = false; }} onBarcodeScanned={['ready', 'acquiring'].includes(phase) && pairingReady && cameraReady ? onBarcodeScanned : undefined} style={StyleSheet.absoluteFill} />
     <View pointerEvents="none" style={styles.cameraTint} />
     <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
       <View><Text style={styles.brand}>{t.appName}</Text><Text style={styles.deliveryPill}>{result ? deliveryCopy : paired ? t.pcAutoSend : t.pcStateConnect}</Text></View>

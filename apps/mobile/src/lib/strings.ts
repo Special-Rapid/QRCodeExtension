@@ -41,6 +41,8 @@ export type StringKey =
   | 'candidatePromptQr'
   | 'candidatePromptText'
   | 'candidatePromptReady'
+  | 'candidateTextSteady'
+  | 'candidateTextRetry'
   | 'deliveriesConfirmed'
   | 'deliveriesConfirming'
   | 'deliveriesExpired'
@@ -67,6 +69,10 @@ export type StringKey =
   | 'pairRemove'
   | 'pairRemoving'
   | 'pairRemoveLabel'
+  | 'pairRemoveConfirmTitle'
+  | 'pairRemoveConfirmBody'
+  | 'pairRemoveCancel'
+  | 'pairRemoveConfirm'
   | 'themeSystem'
   | 'themeLight'
   | 'themeDark'
@@ -93,7 +99,7 @@ export type StringKey =
   | 'receiptConfirmed'
   | 'receiptExpired'
   | 'receiptWaiting'
-  | 'sendFailed' | 'handoffNetworkError' | 'handoffExpiredError' | 'handoffClaimedError' | 'handoffUnauthorizedError' | 'handoffNotPairedError' | 'handoffDeliveryError' | 'handoffGenericError' | 'settingsTitle' | 'settingsBody' | 'settingsOpen';
+  | 'sendFailed' | 'handoffNetworkError' | 'handoffExpiredError' | 'handoffClaimedError' | 'handoffUnauthorizedError' | 'handoffNotPairedError' | 'handoffDeliveryError' | 'handoffGenericError' | 'settingsTitle' | 'settingsBody' | 'settingsOpen' | 'pcLinkEyebrow' | 'pcDevicesKicker' | 'settingsEyebrow' | 'settingsAppearanceBody' | 'settingsLanguageBody';
 
 const messages: Record<ResolvedLocale, Record<StringKey, string>> = {
   ja: {
@@ -134,9 +140,11 @@ const messages: Record<ResolvedLocale, Record<StringKey, string>> = {
     candidateKindBarcode: '読み取り候補',
     candidateKindOcr: '文字リンク候補',
     candidateKindRead: '読み取り候補',
-    candidatePromptQr: 'QRコード・印刷URLを枠に合わせてください',
+    candidatePromptQr: 'QRコード・印刷URLを枠に合わせてください。文字列は自動で確認します',
     candidatePromptText: '印刷URLを枠に合わせてください',
     candidatePromptReady: 'QRコードを枠に合わせてください',
+    candidateTextSteady: 'URLを読み取り中です。スマホを少し止めて、URL全体にピントを合わせてください。',
+    candidateTextRetry: 'URL文字列を確認できません。URL全体を枠に入れて、明るい場所で試してください。',
     deliveriesConfirmed: '台のPCが受領を確認しました。',
     deliveriesConfirming: '台のPCが受領を確認中です。',
     deliveriesExpired: '台のPCが受領を確認しました。未確認の送信先は期限切れです。',
@@ -163,6 +171,10 @@ const messages: Record<ResolvedLocale, Record<StringKey, string>> = {
     pairRemove: '解除',
     pairRemoving: '解除中…',
     pairRemoveLabel: 'との連携を解除',
+    pairRemoveConfirmTitle: 'PCとの連携を解除しますか？',
+    pairRemoveConfirmBody: 'との連携を解除すると、このPCには新しい読み取り結果が届かなくなります。',
+    pairRemoveCancel: 'キャンセル',
+    pairRemoveConfirm: '解除する',
     themeSystem: 'システム',
     themeLight: 'ライト',
     themeDark: 'ダーク',
@@ -200,6 +212,11 @@ const messages: Record<ResolvedLocale, Record<StringKey, string>> = {
     settingsTitle: '設定',
     settingsBody: '表示と言語の設定はこの端末だけに保存されます。',
     settingsOpen: '設定',
+    pcLinkEyebrow: 'PC連携',
+    pcDevicesKicker: '接続中のデバイス',
+    settingsEyebrow: 'この端末',
+    settingsAppearanceBody: '画面の明るさを選べます。',
+    settingsLanguageBody: '表示する言語を選べます。',
   },
   en: {
     appName: 'QR Scan',
@@ -239,9 +256,11 @@ const messages: Record<ResolvedLocale, Record<StringKey, string>> = {
     candidateKindBarcode: 'Scan result',
     candidateKindOcr: 'Text link candidate',
     candidateKindRead: 'Scan result',
-    candidatePromptQr: 'Fit the QR code or printed URL in frame',
+    candidatePromptQr: 'Fit the QR code or printed URL in frame. Text is checked automatically.',
     candidatePromptText: 'Fit the printed URL in frame',
     candidatePromptReady: 'Fit the QR code in frame',
+    candidateTextSteady: 'Reading the URL. Hold the phone still and focus on the full URL.',
+    candidateTextRetry: 'Could not read the URL text. Fit the full URL in frame and try better light.',
     deliveriesConfirmed: 'PCs confirmed receipt.',
     deliveriesConfirming: 'of PCs are confirming receipt.',
     deliveriesExpired: 'PCs confirmed receipt. Remaining destinations expired.',
@@ -268,6 +287,10 @@ const messages: Record<ResolvedLocale, Record<StringKey, string>> = {
     pairRemove: 'Remove',
     pairRemoving: 'Removing…',
     pairRemoveLabel: ' unlink',
+    pairRemoveConfirmTitle: 'Remove this PC link?',
+    pairRemoveConfirmBody: ' will stop receiving new scan results.',
+    pairRemoveCancel: 'Cancel',
+    pairRemoveConfirm: 'Remove link',
     themeSystem: 'System',
     themeLight: 'Light',
     themeDark: 'Dark',
@@ -305,6 +328,11 @@ const messages: Record<ResolvedLocale, Record<StringKey, string>> = {
     settingsTitle: 'Settings',
     settingsBody: 'Appearance and language choices are saved only on this device.',
     settingsOpen: 'Settings',
+    pcLinkEyebrow: 'PC link',
+    pcDevicesKicker: 'Connected devices',
+    settingsEyebrow: 'This device',
+    settingsAppearanceBody: 'Choose how the interface looks.',
+    settingsLanguageBody: 'Choose the interface language.',
   },
 };
 

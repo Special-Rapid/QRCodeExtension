@@ -1,68 +1,113 @@
 <!doctype html>
-<html lang="ja">
+<html lang="ja" data-theme="light">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="light dark">
     <title>QR Scan — 受信箱</title>
     <link rel="icon" type="image/png" href="/icon-128.png">
-    <link rel="stylesheet" href="/app.css">
+    <link rel="stylesheet" href="/app.css?v=20260906-responsive">
   </head>
   <body>
     <div class="app-shell">
-      <aside class="rail" aria-label="メインメニュー">
+      <aside class="rail" aria-label="メインメニュー" data-i18n-aria="navMenu">
         <a class="brand" href="/" aria-label="QR Scan ホーム"><img class="brand-mark" src="/icon-128.png" width="34" height="34" alt=""><span>QR Scan</span></a>
-        <nav>
-          <button class="nav-item active" type="button" data-view="inbox">受信箱</button>
-          <button class="nav-item" type="button" data-view="devices">デバイス</button>
-          <button class="nav-item" type="button" data-view="settings">設定</button>
+        <nav aria-label="QR Scan" data-i18n-aria="navMenu">
+          <button class="nav-item active" type="button" data-view="inbox" aria-current="page" data-i18n="navInbox">受信箱</button>
+          <button class="nav-item" type="button" data-view="devices" data-i18n="navDevices">デバイス</button>
+          <button class="nav-item" type="button" data-view="settings" data-i18n="navSettings">設定</button>
         </nav>
-        <p class="rail-note">スマホで読み取った内容を、このPCで安全に開けます。</p>
+        <p class="rail-note" data-i18n="railNote">スマホで読み取った内容を、このPCで安全に開けます。</p>
       </aside>
 
       <main class="main-content">
         <section class="view" id="inbox-view" aria-labelledby="inbox-title">
-          <div class="page-heading">
-            <div><h1 id="inbox-title">受信箱</h1><p id="inbox-description">スマホから届いたQRコード・バーコードの内容です。</p></div>
-            <div class="notification-controls"><button id="notification-button" class="quiet-button" type="button">Web通知を有効にする</button><p id="notification-status" role="status" aria-live="polite"></p></div>
-          </div>
-
-          <section id="unpaired-panel" class="pair-start" aria-labelledby="pair-start-title">
-            <div class="pair-symbol" aria-hidden="true">⌁</div>
-            <div><h2 id="pair-start-title">スマホと連携する</h2><p>5分間だけ有効なコードをスマホアプリで入力し、両方の画面で確認してから連携します。</p></div>
-            <button id="start-pairing" class="primary-button" type="button">連携コードを表示</button>
+          <section id="unpaired-panel" class="setup-panel" aria-labelledby="setup-title">
+            <div class="setup-progress" data-i18n-aria="progressLabel" aria-label="セットアップの進行状況">
+              <span class="progress-step is-current">1</span><span class="progress-line"></span><span class="progress-step">2</span><span class="progress-line"></span><span class="progress-step">3</span><span class="progress-line"></span><span class="progress-step">4</span>
+            </div>
+            <div class="progress-labels" aria-hidden="true"><span data-i18n="stepPrepare">PCを準備</span><span data-i18n="stepCode">コード入力</span><span data-i18n="stepConfirm">両方で確認</span><span data-i18n="stepReady">受信開始</span></div>
+            <p class="eyebrow" data-i18n="setupEyebrow">PCを準備する</p>
+            <h1 id="setup-title" data-i18n="setupTitle">このPCをセットアップ</h1>
+            <p class="page-copy" id="inbox-description" data-i18n="setupBody">スマホで読み取ったリンクや文字列を、このPCで受け取れます。</p>
+            <div class="setup-card">
+              <p class="card-kicker" data-i18n="setupCardKicker">最初のステップ</p>
+              <h2 data-i18n="setupCardTitle">スマホを連携する</h2>
+              <p data-i18n="setupCardBody">PCに表示するコードをスマホアプリへ入力し、両方の画面で確認します。</p>
+              <button id="start-pairing" class="primary-button" type="button" data-i18n="setupStart">スマホを連携する</button>
+            </div>
           </section>
 
-          <section id="pairing-panel" class="pair-panel" hidden aria-labelledby="pair-code">
-            <p class="section-label">スマホで入力するコード</p>
-            <h2 id="pair-code" class="pair-code" aria-live="polite">--------</h2>
+          <section id="pairing-panel" class="pairing-flow" hidden aria-labelledby="pair-code">
+            <div class="setup-progress" data-i18n-aria="progressLabel" aria-label="セットアップの進行状況">
+              <span class="progress-step is-complete">1</span><span class="progress-line is-complete"></span><span class="progress-step is-current" id="pair-progress-step">2</span><span class="progress-line"></span><span class="progress-step">3</span><span class="progress-line"></span><span class="progress-step">4</span>
+            </div>
+            <div class="progress-labels" aria-hidden="true"><span data-i18n="stepPrepare">PCを準備</span><span data-i18n="stepCode">コード入力</span><span data-i18n="stepConfirm">両方で確認</span><span data-i18n="stepReady">受信開始</span></div>
+            <p class="eyebrow" id="pairing-eyebrow" data-i18n="pairCodeEyebrow">スマホで入力するコード</p>
+            <h1 id="pair-code" class="pair-code" aria-live="polite">--------</h1>
             <p class="pair-expiry" id="pair-expiry">有効期限を確認しています…</p>
-            <div class="confirmation"><span>確認フレーズ</span><strong id="pair-phrase">---</strong><p id="pair-status">スマホアプリでコードを入力してください。</p></div>
-            <button id="confirm-web" class="primary-button" type="button" disabled>このPCで確認する</button>
-            <button id="restart-pairing" class="text-button" type="button">別のコードを作る</button>
+            <div class="pairing-card">
+              <p class="card-kicker" id="pairing-card-kicker" data-i18n="pairCodeKicker">スマホで入力してください</p>
+              <h2 id="pairing-title" data-i18n="pairCodeTitle">スマホアプリを開いてコードを入力</h2>
+              <p id="pairing-instruction" data-i18n="pairCodeBody">入力後、この画面に確認フレーズが表示されます。</p>
+              <div class="confirmation" id="confirmation-panel" hidden>
+                <span data-i18n="pairPhraseLabel">確認フレーズ</span>
+                <strong id="pair-phrase">---</strong>
+              </div>
+              <p id="pair-status" class="inline-status" role="status" aria-live="polite"></p>
+              <button id="confirm-web" class="primary-button" type="button" disabled data-i18n="pairConfirm">このPCで確認する</button>
+              <button id="restart-pairing" class="text-button" type="button" data-i18n="pairRestart">別のコードを作る</button>
+            </div>
           </section>
 
           <section id="inbox-panel" hidden aria-live="polite">
-            <div class="section-row"><h2>最近の受信</h2><span id="connection-state" class="connection-state">接続を確認中</span></div>
+            <div class="page-heading">
+              <div>
+                <p class="eyebrow" data-i18n="inboxEyebrow">PC連携</p>
+                <h1 id="inbox-title" data-i18n="inboxTitle">受信箱</h1>
+                <p data-i18n="inboxBody">スマホから届いた内容を、ここで確認して開けます。</p>
+              </div>
+              <div class="notification-controls">
+                <button id="notification-button" class="quiet-button" type="button" data-i18n="notificationEnable">Web通知を有効にする</button>
+                <p id="notification-status" role="status" aria-live="polite"></p>
+              </div>
+            </div>
+            <div class="section-row"><h2 data-i18n="recentTitle">最近の受信</h2><span id="connection-state" class="connection-state">接続を確認中</span></div>
             <ol id="event-list" class="event-list"></ol>
-            <div id="empty-inbox" class="empty-state"><span aria-hidden="true">↓</span><h2>新しい受信はここに表示されます</h2><p>スマホでQRコードやバーコードを読み取ると、ここに届きます。</p></div>
+            <div id="empty-inbox" class="empty-state">
+              <p class="card-kicker" data-i18n="emptyKicker">準備完了</p>
+              <h2 data-i18n="emptyTitle">まだ受信はありません</h2>
+              <p data-i18n="emptyBody">スマホでQRコード、バーコード、URL文字列を読み取るとここに届きます。</p>
+            </div>
           </section>
         </section>
 
         <section class="view" id="devices-view" hidden aria-labelledby="devices-title">
-          <h1 id="devices-title">このPC</h1>
-          <div class="detail-panel"><p class="section-label">接続中のデバイス</p><h2 id="device-count">0台</h2></div>
-          <div id="device-details" class="detail-panel">連携すると、ここにスマホの名前が表示されます。</div>
-          <div id="connector-panel" class="detail-panel" hidden>
-            <h2>高速通知</h2>
-            <p id="connector-description">Chrome拡張を接続すると、このPCで最優先の通知受信に使います。受信箱や連携コードは増えません。</p>
-            <div class="detail-actions"><button id="connect-extension" class="primary-button" type="button" hidden>Chrome拡張を接続</button><button id="disconnect-extension" class="text-button" type="button" hidden>Chrome拡張を解除</button></div>
+          <div class="page-heading"><div><p class="eyebrow" data-i18n="devicesEyebrow">連携先</p><h1 id="devices-title" data-i18n="devicesTitle">デバイス</h1><p data-i18n="devicesBody">このPCに接続している端末と高速通知を管理します。</p></div></div>
+          <div class="device-grid">
+            <section class="detail-panel device-panel"><p class="card-kicker" data-i18n="thisPcLabel">このPC</p><h2 id="this-pc-name">このブラウザ</h2><p id="connection-state-detail" class="status-badge">未接続</p></section>
+            <section class="detail-panel device-panel"><p class="card-kicker" data-i18n="connectedDevices">接続中のデバイス</p><h2 id="device-count">0台</h2><p id="device-details">連携すると、ここにスマホの名前が表示されます。</p></section>
+          </div>
+          <section id="connector-panel" class="detail-panel connector-panel" hidden>
+            <p class="card-kicker" data-i18n="fastNotificationKicker">Chrome拡張</p>
+            <h2 data-i18n="fastNotificationTitle">高速通知</h2>
+            <p id="connector-description">Chrome拡張を入れると、このPCへの高速通知に使えます。受信箱は増えません。</p>
+            <div class="detail-actions"><button id="connect-extension" class="primary-button" type="button" hidden data-i18n="connectorConnect">Chrome拡張を接続</button><button id="disconnect-extension" class="text-button" type="button" hidden data-i18n="connectorDisconnect">Chrome拡張を解除</button></div>
+          </section>
+        </section>
+
+        <section class="view" id="settings-view" hidden aria-labelledby="settings-title">
+          <div class="page-heading"><div><p class="eyebrow" data-i18n="settingsEyebrow">このブラウザ</p><h1 id="settings-title" data-i18n="settingsTitle">設定</h1><p data-i18n="settingsBody">表示と言語の設定はこの端末だけに保存されます。</p></div></div>
+          <div class="settings-stack">
+            <section class="detail-panel settings-panel"><h2 data-i18n="appearanceTitle">外観</h2><p data-i18n="appearanceBody">画面の明るさを選べます。</p><div class="choice-row" role="group" aria-label="外観" data-i18n-aria="appearanceTitle"><button type="button" class="choice-button" data-theme-choice="system" data-i18n="themeSystem">システム</button><button type="button" class="choice-button" data-theme-choice="light" data-i18n="themeLight">ライト</button><button type="button" class="choice-button" data-theme-choice="dark" data-i18n="themeDark">ダーク</button></div></section>
+            <section class="detail-panel settings-panel"><h2 data-i18n="languageTitle">言語</h2><p data-i18n="languageBody">表示する言語を選べます。</p><div class="choice-row" role="group" aria-label="言語" data-i18n-aria="languageTitle"><button type="button" class="choice-button" data-locale-choice="ja">日本語</button><button type="button" class="choice-button" data-locale-choice="en">English</button></div></section>
+            <section class="detail-panel settings-panel"><h2 data-i18n="notificationTitle">通知</h2><p data-i18n="notificationBody">Webを閉じていても、スマホからの受信を通知できます。</p><button id="settings-notification-button" class="quiet-button" type="button" data-i18n="notificationEnable">Web通知を有効にする</button><p id="settings-notification-status" class="inline-status" role="status" aria-live="polite"></p></section>
+            <section class="detail-panel settings-panel danger-panel"><h2 data-i18n="privacyTitle">連携とプライバシー</h2><p data-i18n="privacyBody">リンクは自動で開きません。受信内容は未読のまま10分で消えます。</p><button id="disconnect-web" class="text-button danger-button" type="button" data-i18n="disconnectPc">このPCとの連携を解除</button></section>
           </div>
         </section>
-        <section class="view" id="settings-view" hidden aria-labelledby="settings-title"><h1 id="settings-title">設定</h1><div class="detail-panel"><h2>安全について</h2><p>リンクは自動で開きません。読み取った内容は未読のまま10分で消えます。</p><button id="disconnect-web" class="text-button" type="button">このPCとの連携を解除</button></div></section>
       </main>
     </div>
-    <template id="event-template"><li class="event"><div class="event-icon" aria-hidden="true">↗</div><div class="event-body"><strong class="event-host"></strong><code class="event-value"></code><time class="event-time"></time></div><div class="event-actions"><button class="copy-event quiet-button" type="button">コピー</button><button class="open-event primary-button" type="button">リンクを開く</button></div></li></template>
+    <template id="event-template"><li class="event"><div class="event-main"><p class="event-kind"></p><strong class="event-host"></strong><code class="event-value"></code><time class="event-time"></time></div><div class="event-actions"><button class="copy-event quiet-button" type="button">コピー</button><button class="open-event primary-button" type="button">開く</button></div></li></template>
     <script type="module" src="/app.js"></script>
   </body>
 </html>

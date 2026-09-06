@@ -27,7 +27,8 @@ describe("web receiver markup", () => {
     expect(serviceWorker).toContain('addEventListener("notificationclick"');
     expect(serviceWorker).not.toContain("event.data.text");
     expect(app).toContain('import { notificationPermissionState } from "/notification-state.js"');
-    expect(app).toContain('push_unavailable: "Web通知はまだ準備中です。管理者が通知設定を完了した後、もう一度試してください。"');
+    expect(app).toContain('setNotificationStatusKey(permissionState.statusKey, permissionState.isError)');
+    expect(app).toContain('push_unavailable: t("pushUnavailable")');
     expect(app).toContain('showForegroundNotification');
     expect(app).toContain('スマホから新しい読み取り結果が届きました。');
     expect(app).not.toContain('body: event.data');

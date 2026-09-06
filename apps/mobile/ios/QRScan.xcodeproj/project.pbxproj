@@ -15,9 +15,9 @@
 		A00000000000000000000012 /* QRScanIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000011 /* QRScanIntent.swift */; };
 		A00000000000000000000013 /* QRScanIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000011 /* QRScanIntent.swift */; };
 		A00000000000000000000014 /* QRScanControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000015 /* QRScanControls.swift */; };
-			A00000000000000000000051 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000050 /* Localizable.strings */; };
-			A00000000000000000000057 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000056 /* Localizable.strings */; };
 		A00000000000000000000040 /* QRScanControls.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = A00000000000000000000020 /* QRScanControls.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A00000000000000000000051 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000050 /* Localizable.strings */; };
+		A00000000000000000000057 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000056 /* Localizable.strings */; };
 		A310D25F7BDB4DF4A7704888 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 4E142F7DABC996FA8941FFD7 /* PrivacyInfo.xcprivacy */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
@@ -56,12 +56,12 @@
 		8AD0590E6AB22C671B3D0BF9 /* Pods-QRScan.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-QRScan.release.xcconfig"; path = "Target Support Files/Pods-QRScan/Pods-QRScan.release.xcconfig"; sourceTree = "<group>"; };
 		A00000000000000000000011 /* QRScanIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScanIntent.swift; sourceTree = "<group>"; };
 		A00000000000000000000015 /* QRScanControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScanControls.swift; sourceTree = "<group>"; };
-		A00000000000000000000052 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
-			A00000000000000000000053 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
-			A00000000000000000000054 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = QRScan/en.lproj/Localizable.strings; sourceTree = "<group>"; };
-			A00000000000000000000055 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = QRScan/ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		A00000000000000000000017 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A00000000000000000000020 /* QRScanControls.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = QRScanControls.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00000000000000000000052 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		A00000000000000000000053 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
+		A00000000000000000000054 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = QRScan/en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		A00000000000000000000055 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = QRScan/ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = QRScan/SplashScreen.storyboard; sourceTree = "<group>"; };
 		B19D6CC4AA52067C385D38DB /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-QRScan/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
@@ -101,8 +101,8 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
 				D1358A6B71644EAC87AB5C6F /* expo.icon */,
-					4E142F7DABC996FA8941FFD7 /* PrivacyInfo.xcprivacy */,
-					A00000000000000000000056 /* Localizable.strings */,
+				4E142F7DABC996FA8941FFD7 /* PrivacyInfo.xcprivacy */,
+				A00000000000000000000056 /* Localizable.strings */,
 			);
 			name = QRScan;
 			sourceTree = "<group>";
@@ -169,8 +169,6 @@
 			path = QRScanControls;
 			sourceTree = "<group>";
 		};
-			A00000000000000000000050 /* Localizable.strings */ = { isa = PBXVariantGroup; children = ( A00000000000000000000052 /* en */, A00000000000000000000053 /* ja */, ); name = Localizable.strings; sourceTree = "<group>"; };
-			A00000000000000000000056 /* Localizable.strings */ = { isa = PBXVariantGroup; children = ( A00000000000000000000054 /* en */, A00000000000000000000055 /* ja */, ); name = Localizable.strings; sourceTree = "<group>"; };
 		B21214810116AE437773124A /* ExpoModulesProviders */ = {
 			isa = PBXGroup;
 			children = (
@@ -285,12 +283,19 @@
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
 				64C1D02EA09243BD9DB74A9A /* expo.icon in Resources */,
-					A310D25F7BDB4DF4A7704888 /* PrivacyInfo.xcprivacy in Resources */,
-					A00000000000000000000057 /* Localizable.strings in Resources */,
+				A310D25F7BDB4DF4A7704888 /* PrivacyInfo.xcprivacy in Resources */,
+				A00000000000000000000057 /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A00000000000000000000026 /* Resources */ = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = ( A00000000000000000000051 /* Localizable.strings in Resources */, ); runOnlyForDeploymentPostprocessing = 0; };
+		A00000000000000000000026 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00000000000000000000051 /* Localizable.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
@@ -472,6 +477,27 @@
 			targetProxy = A00000000000000000000042 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		A00000000000000000000050 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				A00000000000000000000052 /* en */,
+				A00000000000000000000053 /* ja */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000056 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				A00000000000000000000054 /* en */,
+				A00000000000000000000055 /* ja */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {

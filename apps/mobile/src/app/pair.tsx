@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { claimPair, confirmPair, getMobileDevices, getPairStatus, loadMobileIdentity, mobileDeviceLabel, refreshMobileIdentityLabel, revokePair, type MobileIdentity, type PairedPcDevice, type PairCredential } from '../lib/handoff';
 import { usePreferences } from '../lib/preferences';
 import { getStrings, handoffErrorMessage } from '../lib/strings';
@@ -20,7 +20,7 @@ export default function PairScreen() {
   const [identityReady, setIdentityReady] = useState(false);
   const [identityError, setIdentityError] = useState(false);
   const [devices, setDevices] = useState<PairedPcDevice[]>([]);
-  const [message, setMessage] = useState(t.pairDefaultMessage);
+  const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
@@ -108,17 +108,27 @@ export default function PairScreen() {
     } finally { setRemovingId(null); }
   };
 
+  const confirmRemoveDevice = (device: PairedPcDevice) => {
+    Alert.alert(t.pairRemoveConfirmTitle, `${device.label}${t.pairRemoveConfirmBody}`, [
+      { text: t.pairRemoveCancel, style: 'cancel' },
+      { text: t.pairRemoveConfirm, style: 'destructive', onPress: () => { void removeDevice(device); } },
+    ]);
+  };
+
   const canStart = identityReady && !identityError && (!pair || pair.status === 'paired');
   return <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
-    <View style={styles.titleRow}><Text style={styles.title}>{t.pairTitle}</Text><Pressable accessibilityRole="button" accessibilityLabel={t.settingsOpen} onPress={() => router.push('/settings')} style={styles.titleAction}><Text style={styles.titleActionText}>{t.settingsOpen}</Text></Pressable></View>
-    <Text style={styles.copy}>{t.pairBody}</Text>
+    <View style={styles.pageIntro}>
+      <Text style={styles.eyebrow}>{t.pcLinkEyebrow}</Text>
+      <View style={styles.titleRow}><Text style={styles.title}>{t.pairTitle}</Text><Pressable accessibilityRole="button" accessibilityLabel={t.settingsOpen} onPress={() => router.push('/settings')} style={styles.titleAction}><Text style={styles.titleActionText}>{t.settingsOpen}</Text></Pressable></View>
+      <Text style={styles.copy}>{t.pairBody}</Text>
+    </View>
 
     <View style={styles.card}>
       <View style={styles.cardHeading}><Text style={styles.label}>{t.thisPhone}</Text><Text style={styles.currentDeviceLabel}>{identity?.label ?? mobileDeviceLabel()}</Text></View>
-      <View style={styles.cardHeading}><Text style={styles.label}>{t.connectedPcs}</Text><Text style={styles.count}>{devices.length}</Text></View>
+      <View style={styles.cardHeading}><Text style={styles.label}>{t.pcDevicesKicker}</Text><Text style={styles.count}>{devices.length}</Text></View>
       {devices.length === 0 ? <Text style={styles.status}>{t.notConnected}</Text> : devices.map((device) => <View key={device.id} style={styles.deviceRow}>
         <View style={styles.deviceCopy}><Text style={styles.deviceLabel}>{device.label}</Text><Text style={styles.deviceMeta}>{t.pairedOn}: {new Date(device.createdAt).toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US')}</Text></View>
-        <Pressable accessibilityRole="button" accessibilityLabel={`${device.label}${t.pairRemoveLabel}`} disabled={removingId === device.id} onPress={() => void removeDevice(device)} style={styles.remove}><Text style={styles.removeText}>{removingId === device.id ? t.pairRemoving : t.pairRemove}</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${device.label}${t.pairRemoveLabel}`} disabled={removingId === device.id} onPress={() => confirmRemoveDevice(device)} style={styles.remove}><Text style={styles.removeText}>{removingId === device.id ? t.pairRemoving : t.pairRemove}</Text></Pressable>
       </View>)}
     </View>
 
@@ -135,7 +145,7 @@ export default function PairScreen() {
       <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={approvePair} style={styles.primary}><Text style={styles.primaryText}>{busy ? t.pairingRetry : t.confirmThisPhone}</Text></Pressable>
     </View>}
 
-    <Text style={styles.status}>{message}</Text>
+    <Text style={styles.status}>{message || t.pairDefaultMessage}</Text>
     <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.secondary}><Text style={styles.secondaryText}>{t.pairingBack}</Text></Pressable>
   </ScrollView>;
 }
