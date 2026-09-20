@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="quick_settings_reading_title">画面を読み取り中</string>
+  <string name="quick_settings_reading_body">この端末内でQRコードとURL文字列を探しています</string>
+</resources>

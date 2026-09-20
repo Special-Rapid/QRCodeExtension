@@ -1,0 +1,4 @@
+<resources>
+  <string name="quick_settings_reading_title">Reading this screen</string>
+  <string name="quick_settings_reading_body">Looking for QR codes and URL text on this device</string>
+</resources>
