@@ -50,6 +50,18 @@ npm run check:extension
 - [モバイルアプリ](apps/mobile/README.md)
 - [PC受信箱とWorker](apps/handoff/README.md)
 
+## CI と配布ビルド
+
+GitHub Actionsの`Verify`は、PR・`main`へのpush・手動実行時に、アプリ、tooling、lockfile、workflow自体が変わった場合だけ`npm run check`を実行します。`docs/`だけの変更では起動せず、同じPRまたはbranchへ新しいcommitが来た場合は古いverifyを取消します。
+
+iOS/Androidの配布バイナリは、pushごとには作りません。Expo GitHub Appでこのrepositoryをモバイルprojectへ接続し、base directoryを`apps/mobile`に設定したうえで、必要なPRに次のラベルを付けます。
+
+- `eas-build-android:preview` — Android internal preview
+- `eas-build-ios:preview` — iOS internal preview
+- `eas-build-all:preview` — 両platformのinternal preview
+
+production build / store submitは、SemVerのversion tagを作成したrelease candidateだけで、EAS dashboardまたは明示的なEAS workflowから実行します。通常の`main` pushをproduction buildのトリガーにはしません。
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
