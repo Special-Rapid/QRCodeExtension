@@ -25,6 +25,7 @@ function RootNavigator() {
         <Stack.Screen name="scan" options={{ headerShown: false }} />
         <Stack.Screen name="pair" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
+        <Stack.Screen name="image-scan" options={{ headerShown: false }} />
       </Stack>
     </>
   );

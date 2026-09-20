@@ -17,14 +17,16 @@ test('Android Tile starts one-time screen capture without overlay permission', a
   assert.match(service, /PendingIntent\.FLAG_IMMUTABLE/);
 });
 
-test('iOS Control and router target the scanner without carrying scan data', async () => {
-  const [intent, route] = await Promise.all([
+test('iOS Control opens the local image selection screen without carrying scan data', async () => {
+  const [intent, route, imageRoute] = await Promise.all([
     read('../ios/QRScanControls/QRScanIntent.swift'),
     read('../src/app/scan.tsx'),
+    read('../src/app/image-scan.tsx'),
   ]);
-  assert.match(intent, /qrscan:\/\/scan\?entry=control-center/);
+  assert.match(intent, /qrscan:\/\/image-scan\?entry=control-center/);
   assert.doesNotMatch(intent, /token|data|credential/i);
   assert.match(route, /<Redirect href=\{\{ pathname: '\/'/);
+  assert.match(imageRoute, /launchImageLibraryAsync/);
 });
 
 test('theme and language preferences expose System, Light, Dark, Japanese, and English resources', async () => {

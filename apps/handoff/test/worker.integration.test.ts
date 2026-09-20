@@ -52,10 +52,16 @@ describe('handoff Worker integration', () => {
 
     const denied = await api(`/api/v1/pairs/${web.code}/events?receiver=${web.receiverId}`);
     expect(denied.status).toBe(401);
+    const deniedDirect = await api(`/api/v1/pairs/${web.code}/events?event=${handoff.handoffs[0].eventId}`);
+    expect(deniedDirect.status).toBe(401);
 
     const inbox = await api(`/api/v1/pairs/${web.code}/events?receiver=${web.receiverId}`, { headers: { cookie: webCookie! } });
     expect(inbox.status).toBe(200);
     await expect(inbox.json()).resolves.toMatchObject({ events: [{ data: 'example.com/from-phone', host: 'example.com', openUrl: 'https://example.com/from-phone' }] });
+
+    const directEvent = await api(`/api/v1/pairs/${web.code}/events?event=${handoff.handoffs[0].eventId}`, { headers: { cookie: webCookie! } });
+    expect(directEvent.status).toBe(200);
+    await expect(directEvent.json()).resolves.toMatchObject({ events: [{ id: handoff.handoffs[0].eventId, openUrl: 'https://example.com/from-phone' }] });
 
     const beforeAck = await api('/api/v1/handoffs/status', { method: 'POST', body: JSON.stringify({ handoffs: handoff.handoffs }), headers: { 'content-type': 'application/json', authorization: `Bearer ${mobile.token}` } });
     await expect(beforeAck.json()).resolves.toMatchObject({ total: 1, acknowledged: 0, pending: 1 });

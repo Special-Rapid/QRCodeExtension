@@ -47,6 +47,8 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>QRコードとバーコードを読み取るためにカメラを使用します。画像はこの端末で処理されます。</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>選択した画像内のQRコード、バーコード、URL文字列をこの端末で読み取るために写真ライブラリを使用します。</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Allow $(PRODUCT_NAME) to access your Face ID biometric data.</string>
 	<key>NSMicrophoneUsageDescription</key>

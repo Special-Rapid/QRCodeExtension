@@ -267,11 +267,13 @@ export class PairingRoom extends DurableObject<Env> {
       await this.saveEvents(events);
       return json({ events: (requestedEventId ? events.filter((event) => event.id === requestedEventId) : events).map(publicEvent) });
     }
-    const receiverId = new URL(request.url).searchParams.get("receiver");
-    if (!session || session.status !== "paired" || receiverId !== session.web.id) return json({ error: "unauthorized" }, 401);
+    const requestUrl = new URL(request.url);
+    const receiverId = requestUrl.searchParams.get("receiver");
+    if (!session || session.status !== "paired" || (receiverId && receiverId !== session.web.id)) return json({ error: "unauthorized" }, 401);
     const events = (await this.getEvents()).filter((event) => event.expiresAt > Date.now());
     await this.saveEvents(events);
-    return json({ events: events.map(publicEvent) });
+    const requestedEventId = requestUrl.searchParams.get("event");
+    return json({ events: (requestedEventId ? events.filter((event) => event.id === requestedEventId) : events).map(publicEvent) });
   }
 
   private async socket(request: Request) {
@@ -443,7 +445,7 @@ export default {
       }
       if (action === "events") {
         const token = bearerToken(request) || webToken;
-        const receiverId = url.searchParams.get("receiver") ?? "";
+        const receiverId = url.searchParams.get("receiver") ?? await receiverIdFromPair(env, code);
         const membership = token && receiverId ? await env.DB.prepare("SELECT p.id FROM receivers r JOIN pairings p ON p.web_receiver_id = r.id WHERE r.id = ? AND r.token_hash = ? AND r.kind = 'web' AND r.revoked_at IS NULL AND p.id = ? AND p.revoked_at IS NULL").bind(receiverId, await hashToken(token), code).first() : null;
         if (!membership) return withCors(json({ error: "unauthorized" }, 401), request);
       }

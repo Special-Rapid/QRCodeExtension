@@ -13,6 +13,7 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "QRコードとバーコードを読み取るためにカメラを使用します。画像はこの端末で処理されます。"
+        ,"NSPhotoLibraryUsageDescription": "選択した画像内のQRコード、バーコード、URL文字列をこの端末で読み取るために写真ライブラリを使用します。"
       }
     },
     "android": {
@@ -53,6 +54,12 @@
         }
       ],
       "expo-secure-store"
+      ,[
+        "expo-image-picker",
+        {
+          "photosPermission": "選択した画像内のQRコード、バーコード、URL文字列をこの端末で読み取るために写真ライブラリを使用します。"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

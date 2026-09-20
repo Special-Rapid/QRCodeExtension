@@ -29,6 +29,7 @@ export default function SettingsScreen() {
       {Platform.OS === 'ios' && <View style={styles.settingsSection}>
         <Text style={styles.settingsLabel}>{t.sharedImageHeading}</Text>
         <Text selectable style={styles.copy}>{t.sharedImageBody}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={t.sharedImageSelect} style={styles.secondary} onPress={() => router.push('/image-scan' as never)}><Text style={styles.secondaryText}>{t.sharedImageSelect}</Text></Pressable>
       </View>}
     </View>
   </ScrollView>;

@@ -10,16 +10,16 @@ const QR_CANVAS_COLORS = { dark: "#071b41", light: "#ffffff" };
 const COPY = {
   ja: {
     preferencesHeading: "表示設定", themeLabel: "外観", themeSystem: "システム", themeLight: "ライト", themeDark: "ダーク", languageLabel: "言語", languageJa: "日本語", languageEn: "English",
-    currentUrlHeading: "このページのQRコード", currentUrlQrLabel: "このページのURLを表すQRコード", qrTooLarge: "QRコードの容量を超えました。", qrUnavailable: "QRコードを作れませんでした。", currentUrlLoading: "現在のページURLをQRコードにしています…", copyUrl: "URLをコピー",
+    currentUrlHeading: "このページのQRコード", currentUrlQrLabel: "このページのURLを表すQRコード", currentUrlActionsLabel: "QRコード画像を保存", qrTooLarge: "QRコードの容量を超えました。", qrUnavailable: "QRコードを作れませんでした。", currentUrlLoading: "現在のページURLをQRコードにしています…", copyUrl: "URLをコピー", downloadSvg: "SVGで保存", downloadPng: "PNGで保存",
     scanHeading: "QRコードを読み取る", scanIntro: "画面に表示中、または画像ファイル内のQRコードをこの端末内だけで解析します。", scanAgain: "もう一度スキャン", scanLoading: "ページをスキャンしています", selectImage: "画像を選択", scanInitial: "ページを開いたまま「このページをスキャン」を押してください。", resultsHeading: "読み取り結果", localOnly: "カメラ不使用・すべてローカル処理",
-    currentUrlReady: "別の端末で読み取って、このページを開けます。", currentUrlUnsupported: "このページはQRコードにできません。通常のWebページで開いてください。", currentUrlError: "現在のページURLを取得できませんでした。ページを開いたまま、もう一度ポップアップを開いてください。", currentUrlTooLarge: "このURLはQRコードの容量を超えています。URLをコピーして共有してください。", currentUrlQrError: "QRコードを作れませんでした。URLをコピーして共有してください。", currentUrlCopied: "URLをコピーしました。", currentUrlCopyError: "コピーできませんでした。URLを選択してコピーしてください。",
+    currentUrlReady: "別の端末で読み取って、このページを開けます。", currentUrlUnsupported: "このページはQRコードにできません。通常のWebページで開いてください。", currentUrlError: "現在のページURLを取得できませんでした。ページを開いたまま、もう一度ポップアップを開いてください。", currentUrlTooLarge: "このURLはQRコードの容量を超えています。URLをコピーして共有してください。", currentUrlQrError: "QRコードを作れませんでした。URLをコピーして共有してください。", currentUrlCopied: "URLをコピーしました。", currentUrlCopyError: "コピーできませんでした。URLを選択してコピーしてください。", currentUrlSvgSaved: "SVGを保存しました。", currentUrlPngSaved: "高解像度PNGを保存しました。", currentUrlDownloadError: "画像を保存できませんでした。もう一度試してください。",
     scanPageBusy: "このページのQRコードを解析しています…", scanImageBusy: "選択した画像を解析しています…", scanEmpty: "QRコードが見つかりませんでした。表示範囲を確認するか、画像を選択してください。", scanResults: "{count}件のQRコードを読み取りました。データはこの端末から送信されません。", imageReadError: "画像を解析できませんでした。別の画像を試してください。", resultOpen: "開く", resultCopy: "コピー", resultCopied: "読み取り結果をコピーしました。", resultCopyError: "コピーできませんでした。結果を選択してコピーしてください。", protectedCapture: "このページはChromeの保護ページのため解析できません。通常のWebページで試してください。", captureError: "ページを読み取れませんでした。ページを開いたまま、もう一度試してください。"
   },
   en: {
     preferencesHeading: "Display", themeLabel: "Theme", themeSystem: "System", themeLight: "Light", themeDark: "Dark", languageLabel: "Language", languageJa: "日本語", languageEn: "English",
-    currentUrlHeading: "QR code for this page", currentUrlQrLabel: "QR code containing this page URL", qrTooLarge: "This URL is too large for a QR code.", qrUnavailable: "Could not create the QR code.", currentUrlLoading: "Creating a QR code for this page…", copyUrl: "Copy URL",
+    currentUrlHeading: "QR code for this page", currentUrlQrLabel: "QR code containing this page URL", currentUrlActionsLabel: "Save QR code image", qrTooLarge: "This URL is too large for a QR code.", qrUnavailable: "Could not create the QR code.", currentUrlLoading: "Creating a QR code for this page…", copyUrl: "Copy URL", downloadSvg: "Save SVG", downloadPng: "Save PNG",
     scanHeading: "Read QR codes", scanIntro: "Analyze QR codes visible on this page or in an image, entirely on this device.", scanAgain: "Scan again", scanLoading: "Scanning this page", selectImage: "Choose image", scanInitial: "Keep this page open, then select Scan this page.", resultsHeading: "Scan results", localOnly: "No camera · processed entirely on this device",
-    currentUrlReady: "Scan with another device to open this page.", currentUrlUnsupported: "This page cannot be made into a QR code. Open a regular web page instead.", currentUrlError: "Could not get this page URL. Keep the page open and open the popup again.", currentUrlTooLarge: "This URL is too large for a QR code. Copy it to share instead.", currentUrlQrError: "Could not create the QR code. Copy the URL to share instead.", currentUrlCopied: "URL copied.", currentUrlCopyError: "Could not copy. Select the URL and copy it manually.",
+    currentUrlReady: "Scan with another device to open this page.", currentUrlUnsupported: "This page cannot be made into a QR code. Open a regular web page instead.", currentUrlError: "Could not get this page URL. Keep the page open and open the popup again.", currentUrlTooLarge: "This URL is too large for a QR code. Copy it to share instead.", currentUrlQrError: "Could not create the QR code. Copy the URL to share instead.", currentUrlCopied: "URL copied.", currentUrlCopyError: "Could not copy. Select the URL and copy it manually.", currentUrlSvgSaved: "SVG saved.", currentUrlPngSaved: "High-resolution PNG saved.", currentUrlDownloadError: "Could not save the image. Try again.",
     scanPageBusy: "Scanning QR codes on this page…", scanImageBusy: "Scanning the selected image…", scanEmpty: "No QR code was found. Check the visible area or choose an image.", scanResults: "Read {count} QR code(s). No data leaves this device.", imageReadError: "Could not scan this image. Try another image.", resultOpen: "Open", resultCopy: "Copy", resultCopied: "Scan result copied.", resultCopyError: "Could not copy. Select the result and copy it manually.", protectedCapture: "Chrome protects this page, so it cannot be scanned. Try a regular web page.", captureError: "Could not scan this page. Keep it open and try again."
   }
 };
@@ -38,6 +38,8 @@ const currentUrlUnavailable = document.querySelector("#current-url-unavailable")
 const currentUrlValue = document.querySelector("#current-url-value");
 const currentUrlStatus = document.querySelector("#current-url-status");
 const copyCurrentUrlButton = document.querySelector("#copy-current-url");
+const downloadCurrentUrlSvgButton = document.querySelector("#download-current-url-svg");
+const downloadCurrentUrlPngButton = document.querySelector("#download-current-url-png");
 const themeColorMeta = document.querySelector('meta[name="theme-color"]');
 const preferenceButtons = [...document.querySelectorAll("[data-preference]")];
 const systemTheme = globalThis.matchMedia?.("(prefers-color-scheme: dark)") ?? null;
@@ -46,6 +48,7 @@ let preferences = { ...DEFAULT_PREFERENCES };
 let currentUrlStatusKey = "currentUrlLoading";
 let currentUrlStatusTone = "";
 let currentUrlUnavailableKey = "qrTooLarge";
+let currentUrl = null;
 let scanStatusKey = "scanInitial";
 let scanStatusTone = "";
 let scanStatusValues = {};
@@ -54,6 +57,8 @@ let decodedResults = null;
 scanPageButton.addEventListener("click", scanVisiblePage);
 fileInput.addEventListener("change", scanSelectedImage);
 copyCurrentUrlButton.addEventListener("click", copyCurrentUrl);
+downloadCurrentUrlSvgButton.addEventListener("click", () => downloadCurrentUrlQr("svg"));
+downloadCurrentUrlPngButton.addEventListener("click", () => downloadCurrentUrlQr("png"));
 preferenceButtons.forEach((button) => button.addEventListener("click", () => updatePreference(button.dataset.preference, button.dataset.value)));
 systemTheme?.addEventListener?.("change", () => {
   if (preferences.theme === "system") applyPreferences();
@@ -129,7 +134,7 @@ async function initializeCurrentUrlQr() {
   setCurrentUrlState("loading");
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const currentUrl = currentWebUrlFromTab(tab);
+    currentUrl = currentWebUrlFromTab(tab);
     if (!currentUrl) return setCurrentUrlState("unsupported");
     try {
       await QRCode.toCanvas(currentUrlQr, currentUrl, { errorCorrectionLevel: "M", margin: 2, width: 216, color: QR_CANVAS_COLORS });
@@ -144,6 +149,7 @@ async function initializeCurrentUrlQr() {
     currentUrlQrFrame.dataset.state = "ready";
     setCurrentUrlStatus("currentUrlReady", "success");
     copyCurrentUrlButton.disabled = false;
+    setCurrentUrlExportEnabled(true);
   } catch {
     setCurrentUrlState("error");
   }
@@ -157,6 +163,7 @@ function showCurrentUrlQrUnavailable(currentUrl, error) {
   currentUrlValue.textContent = currentUrl;
   currentUrlValue.hidden = false;
   copyCurrentUrlButton.disabled = false;
+  setCurrentUrlExportEnabled(false);
   currentUrlUnavailableKey = isQrCapacityError(error) ? "qrTooLarge" : "qrUnavailable";
   renderCurrentUrlUnavailable();
   setCurrentUrlStatus(currentUrlUnavailableKey === "qrTooLarge" ? "currentUrlTooLarge" : "currentUrlQrError", "error");
@@ -180,7 +187,49 @@ async function copyCurrentUrl() {
   }
 }
 
+function setCurrentUrlExportEnabled(enabled) {
+  downloadCurrentUrlSvgButton.disabled = !enabled;
+  downloadCurrentUrlPngButton.disabled = !enabled;
+}
+
+async function downloadCurrentUrlQr(format) {
+  if (!currentUrl) return;
+  const button = format === "svg" ? downloadCurrentUrlSvgButton : downloadCurrentUrlPngButton;
+  button.disabled = true;
+  try {
+    const blob = format === "svg" ? await createSvgQr(currentUrl) : await createPngQr(currentUrl);
+    downloadBlob(blob, `qr-scan-current-url.${format}`);
+    setCurrentUrlStatus(format === "svg" ? "currentUrlSvgSaved" : "currentUrlPngSaved", "success");
+  } catch {
+    setCurrentUrlStatus("currentUrlDownloadError", "error");
+  } finally {
+    if (currentUrlQrFrame.dataset.state === "ready") button.disabled = false;
+  }
+}
+
+async function createSvgQr(value) {
+  const svg = await QRCode.toString(value, { type: "svg", errorCorrectionLevel: "M", margin: 2, color: QR_CANVAS_COLORS });
+  return new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+}
+
+async function createPngQr(value) {
+  const canvas = document.createElement("canvas");
+  await QRCode.toCanvas(canvas, value, { errorCorrectionLevel: "M", margin: 2, width: 2048, color: QR_CANVAS_COLORS });
+  const blob = await new Promise((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error("png_encode_failed")), "image/png"));
+  return blob;
+}
+
+function downloadBlob(blob, filename) {
+  const href = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = href;
+  anchor.download = filename;
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(href), 0);
+}
+
 function setCurrentUrlState(state) {
+  currentUrl = null;
   currentUrlQrFrame.dataset.state = state;
   currentUrlQr.hidden = true;
   currentUrlLoading.hidden = state !== "loading";
@@ -188,6 +237,7 @@ function setCurrentUrlState(state) {
   currentUrlValue.hidden = true;
   currentUrlValue.textContent = "";
   copyCurrentUrlButton.disabled = true;
+  setCurrentUrlExportEnabled(false);
   setCurrentUrlStatus(state === "unsupported" ? "currentUrlUnsupported" : state === "error" ? "currentUrlError" : "currentUrlLoading", state === "error" ? "error" : "");
 }
 

@@ -1,2 +1,2 @@
-"open_scanner" = "スキャンを開く";
-"open_scanner_description" = "QR Scanのカメラスキャナーを開きます。";
+"open_scanner" = "画像を選んで読み取る";
+"open_scanner_description" = "QR Scanの画像選択読取画面を開きます。";

@@ -10,7 +10,9 @@ self.addEventListener("push", (event) => {
       body: "新しい読み取り結果があります。",
       tag: `qr-scan-handoff:${eventId}`,
       renotify: false,
-      data: { inbox: "/" }
+      // The URL is deliberately not included in Push data. It is resolved only after a
+      // notification click, through the authenticated same-origin event endpoint.
+      data: { inbox: "/", code, eventId }
     });
     if (code && eventId) await queueAndDrainAck(code, eventId);
   })());
@@ -54,10 +56,29 @@ async function drainAcks() {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   event.waitUntil((async () => {
-    const target = new URL(event.notification.data?.inbox ?? "/", self.location.origin).href;
+    const target = await notificationTarget(event.notification.data);
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    if (target.direct) return self.clients.openWindow(target.href);
     const existing = windows.find((client) => client.url.startsWith(self.location.origin));
     if (existing) return existing.focus();
-    return self.clients.openWindow(target);
+    return self.clients.openWindow(target.href);
   })());
 });
+
+async function notificationTarget(data) {
+  const inbox = new URL(data?.inbox ?? "/", self.location.origin).href;
+  const code = typeof data?.code === "string" ? data.code : "";
+  const eventId = typeof data?.eventId === "string" ? data.eventId : "";
+  if (!/^[A-Z0-9-]{4,32}$/i.test(code) || !eventId) return { href: inbox, direct: false };
+  try {
+    const response = await fetch(`/api/v1/pairs/${encodeURIComponent(code)}/events?event=${encodeURIComponent(eventId)}`, { credentials: "same-origin" });
+    if (!response.ok) return { href: inbox, direct: false };
+    const body = await response.json();
+    const event = Array.isArray(body?.events) ? body.events.find((item) => item?.id === eventId) : null;
+    const target = typeof event?.openUrl === "string" ? new URL(event.openUrl) : null;
+    if (!target || !["http:", "https:"].includes(target.protocol)) return { href: inbox, direct: false };
+    return { href: target.href, direct: true };
+  } catch {
+    return { href: inbox, direct: false };
+  }
+}

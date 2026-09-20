@@ -1,0 +1,5 @@
+<resources>
+  <color name="quick_settings_reading_background">#F7FAFF</color>
+  <color name="quick_settings_reading_title">#071B41</color>
+  <color name="quick_settings_reading_body">#52627C</color>
+</resources>

@@ -5,20 +5,26 @@ import test from 'node:test';
 const read = (path) => readFile(new URL(path, import.meta.url), 'utf8');
 
 test('iOS image sharing and Android one-frame screen capture route only a short-lived token', async () => {
-  const [appConfig, manifest, tile, activity, extension, route] = await Promise.all([
+  const [appConfig, manifest, tile, activity, extension, route, colors, nightColors] = await Promise.all([
     read('../app.json'),
     read('../android/app/src/main/AndroidManifest.xml'),
     read('../android/app/src/main/java/com/snkisk/qrscan/ScanTileService.kt'),
     read('../modules/qr-scan-ocr/android/src/main/java/expo/modules/qrscanocr/ScreenCaptureActivity.kt'),
     read('../ios/QRScanShare/Info.plist'),
     read('../src/app/share-image.tsx'),
+    read('../modules/qr-scan-ocr/android/src/main/res/values/quick_settings_colors.xml'),
+    read('../modules/qr-scan-ocr/android/src/main/res/values-night/quick_settings_colors.xml'),
   ]);
   assert.match(appConfig, /android\.permission\.FOREGROUND_SERVICE_MEDIA_PROJECTION/);
   assert.match(manifest, /FOREGROUND_SERVICE_MEDIA_PROJECTION/);
   assert.doesNotMatch(manifest, /android\.intent\.action\.SEND/);
   assert.match(tile, /ScreenCaptureActivity/);
   assert.match(activity, /createScreenCaptureIntent/);
-  assert.match(activity, /Stay transparent until the first frame/);
+  assert.match(activity, /showReadingState/);
+  assert.match(activity, /quick_settings_reading_title/);
+  assert.match(activity, /quick_settings_reading_background/);
+  assert.match(colors, /quick_settings_reading_background/);
+  assert.match(nightColors, /quick_settings_reading_background/);
   assert.match(extension, /NSExtensionActivationSupportsImageWithMaxCount/);
   assert.match(extension, /com\.apple\.share-services/);
   assert.match(route, /params\.shareToken = token/);
@@ -39,7 +45,13 @@ test('shared-image recognition remains local, covers QR/barcodes and URL text, t
   assert.match(scanner, /deleteSharedImage\(token\)/);
   assert.match(scanner, /<Image source=\{\{ uri: sharedImageUri \}\} resizeMode="contain"/);
   assert.match(scanner, /sharedImageUri \? 'contain' : 'cover'/);
-  assert.match(scanner, /shareToken \|\| captureError/);
+  assert.match(scanner, /shareToken \|\| captureError \|\| imageUri/);
+  assert.match(scanner, /selectedImageUri/);
+  assert.match(scanner, /imageUri\.startsWith\('file:\/\/'\)/);
+  assert.match(scanner, /hasSharedImage = \(typeof shareToken/);
+  assert.match(scanner, /imageInputPending/);
+  assert.match(scanner, /consumedImageInput\.current = null/);
+  assert.match(scanner, /setSharedImageState\('idle'\)/);
   assert.doesNotMatch(scanner, /startScreenCapture/);
   assert.match(nativeModule, /consumeSharedImage/);
   assert.match(androidStore, /context\.cacheDir/);
@@ -50,4 +62,20 @@ test('shared-image recognition remains local, covers QR/barcodes and URL text, t
   assert.match(iosModule, /VNDetectBarcodesRequest/);
   assert.match(iosModule, /containerURL\(forSecurityApplicationGroupIdentifier/);
   assert.match(iosModule, /cleanupExpiredSharedImages/);
+});
+
+test('iOS image selection keeps processing local and enters the existing scanner candidate flow', async () => {
+  const [route, settings, config, info] = await Promise.all([
+    read('../src/app/image-scan.tsx'),
+    read('../src/app/settings.tsx'),
+    read('../app.json'),
+    read('../ios/QRScan/Info.plist'),
+  ]);
+  assert.match(route, /launchImageLibraryAsync/);
+  assert.match(route, /mediaTypes: \['images'\]/);
+  assert.match(route, /params: \{ imageUri: uri \}/);
+  assert.match(route, /uri\?\.startsWith\('file:\/\/'\)/);
+  assert.match(settings, /router\.push\('\/image-scan' as never\)/);
+  assert.match(config, /expo-image-picker/);
+  assert.match(info, /NSPhotoLibraryUsageDescription/);
 });

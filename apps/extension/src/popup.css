@@ -28,6 +28,8 @@ button, input { font: inherit; }
 .current-url-status { min-height: 19px; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
 .current-url-status[data-tone="error"] { color: var(--error); }
 .current-url-status[data-tone="success"] { color: var(--success); }
+.current-url-actions { display: grid; width: 100%; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.current-url-download { margin-top: 0 !important; min-height: 44px; font-size: 13px; }
 .current-url-copy { margin-top: 0 !important; min-height: 44px; }
 .content { padding: 22px; }
 .content > h2 { margin: 0; font-size: 18px; line-height: 1.35; letter-spacing: -.02em; }

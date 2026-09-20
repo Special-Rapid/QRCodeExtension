@@ -39,7 +39,7 @@ function markerPosition(candidate: ScanCandidate, frame: CapturedFrame | null, v
 }
 
 export default function ScannerScreen() {
-  const { shareToken, captureError } = useLocalSearchParams<{ shareToken?: string; captureError?: string }>();
+  const { shareToken, captureError, imageUri } = useLocalSearchParams<{ shareToken?: string; captureError?: string; imageUri?: string }>();
   const { resolvedTheme, locale } = usePreferences();
   const isDark = resolvedTheme === 'dark';
   const t = useMemo(() => getStrings(locale), [locale]);
@@ -75,7 +75,10 @@ export default function ScannerScreen() {
   const detectionEpoch = useRef(0);
   const scanGeneration = useRef(0);
   const pinch = useRef<{ distance: number; zoom: number } | null>(null);
-  const consumedShareToken = useRef<string | null>(null);
+  const consumedImageInput = useRef<string | null>(null);
+  const selectedImageUri = typeof imageUri === 'string' && imageUri.startsWith('file://') ? imageUri : '';
+  const imageInputKey = typeof shareToken === 'string' && shareToken ? `share:${shareToken}` : selectedImageUri ? `selected:${selectedImageUri}` : '';
+  const imageInputPending = Boolean(imageInputKey) && phase === 'ready' && sharedImageState === 'idle' && !sharedImageUri;
   const insets = useSafeAreaInsets();
   const viewport = useWindowDimensions();
   const styles = useMemo(() => createSystemStyles(getPalette(isDark ? 'dark' : 'light')), [isDark]);
@@ -140,12 +143,13 @@ export default function ScannerScreen() {
     setSelectedCandidateId(null);
     setCapturedFrame(null);
     setSharedImageUri(null);
+    setSharedImageState('idle');
     setPhase('ready');
     setDelivery('idle');
     setActionNotice(notice);
     setCameraSession((value) => value + 1);
     if (shareToken) void deleteSharedImage(shareToken);
-    if (shareToken || captureError) router.replace('/');
+    if (shareToken || captureError || imageUri) router.replace('/');
   };
   const pollHandoffReceipt = async (handoffs: HandoffTarget[], generation: number) => {
     if (generation !== scanGeneration.current) return;
@@ -216,8 +220,12 @@ export default function ScannerScreen() {
 
   useEffect(() => {
     const token = typeof shareToken === 'string' ? shareToken : '';
-    if (!token || consumedShareToken.current === token) return;
-    consumedShareToken.current = token;
+    if (!imageInputKey) {
+      consumedImageInput.current = null;
+      return;
+    }
+    if (consumedImageInput.current === imageInputKey) return;
+    consumedImageInput.current = imageInputKey;
     let active = true;
     const generation = scanGeneration.current + 1;
     scanGeneration.current = generation;
@@ -232,7 +240,7 @@ export default function ScannerScreen() {
     let retainedForSelection = false;
     void (async () => {
       try {
-        const uri = await consumeSharedImage(token);
+        const uri = token ? await consumeSharedImage(token) : selectedImageUri;
         if (!active || generation !== scanGeneration.current) return;
         setSharedImageUri(uri);
         const recognition = await recognizeSharedImage(uri);
@@ -258,13 +266,13 @@ export default function ScannerScreen() {
         scanLocked.current = false;
       } finally {
         if (!retainedForSelection) {
-          void deleteSharedImage(token);
+          if (token) void deleteSharedImage(token);
           if (active) setSharedImageUri(null);
         }
       }
     })();
     return () => { active = false; };
-  }, [beginPicker, shareToken, t.sharedImageNoResult, t.sharedImageProcessing, t.sharedImageUnavailable]);
+  }, [beginPicker, imageInputKey, selectedImageUri, shareToken, t.sharedImageNoResult, t.sharedImageProcessing, t.sharedImageUnavailable]);
 
   const finalizeBarcodeAcquisition = async (generation: number) => {
     const activeAcquisition = acquisition.current;
@@ -392,10 +400,10 @@ export default function ScannerScreen() {
     setActionNotice(t.deliveryToPc);
     void sendCandidate(selectedCandidate, scanGeneration.current);
   };
-  const hasSharedImage = (typeof shareToken === 'string' && shareToken.length > 0) || (typeof captureError === 'string' && captureError.length > 0);
+  const hasSharedImage = (typeof shareToken === 'string' && shareToken.length > 0) || (typeof imageUri === 'string' && imageUri.startsWith('file://')) || (typeof captureError === 'string' && captureError.length > 0);
   const captureFailureNotice = typeof captureError === 'string' && captureError ? captureError === 'cancelled' ? t.screenCaptureCancelled : t.screenCaptureUnavailable : '';
   if (!permission && !hasSharedImage) return <View style={styles.center}><Text style={styles.loadingText}>{t.cameraPreparing}</Text></View>;
-  if (sharedImageState === 'processing') return <View style={styles.center}><Text style={styles.loadingText}>{t.sharedImageProcessing}</Text></View>;
+  if (sharedImageState === 'processing' || imageInputPending) return <View style={styles.center}><Text style={styles.loadingText}>{t.sharedImageProcessing}</Text></View>;
   if (sharedImageState === 'failed' || captureFailureNotice) return <View style={styles.center}><Text selectable style={styles.permissionTitle}>{t.sharedImageFailedTitle}</Text><Text selectable style={styles.permissionBody}>{captureFailureNotice || actionNotice}</Text><Pressable accessibilityRole="button" style={styles.primaryButton} onPress={() => scanAgain()}><Text style={styles.primaryButtonText}>{t.sharedImageUseCamera}</Text></Pressable></View>;
   if (!permission?.granted && !hasSharedImage) {
     const permanentlyDenied = permission ? !permission.canAskAgain : false;

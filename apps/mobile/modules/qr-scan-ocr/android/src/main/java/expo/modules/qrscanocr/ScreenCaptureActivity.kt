@@ -5,6 +5,10 @@ import android.content.Context
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
+import android.view.Gravity
+import android.widget.LinearLayout
+import android.widget.ProgressBar
+import android.widget.TextView
 import androidx.core.content.ContextCompat
 
 class ScreenCaptureActivity : Activity() {
@@ -29,12 +33,38 @@ class ScreenCaptureActivity : Activity() {
       finish()
       return
     }
+    showReadingState()
     val service = Intent(this, ScreenCaptureService::class.java).apply {
       putExtra(resultCodeExtra, resultCode)
       putExtra(resultDataExtra, data)
     }
     ContextCompat.startForegroundService(this, service)
-    // Stay transparent until the first frame is captured so the Quick Settings entry
-    // preserves the app that was visible behind the system consent prompt.
+    // This owned, temporary state appears only after the operating-system consent. The
+    // capture service still reads one frame, then returns to the scanner result flow.
+  }
+
+  private fun showReadingState() {
+    val inset = (28 * resources.displayMetrics.density).toInt()
+    val root = LinearLayout(this).apply {
+      orientation = LinearLayout.VERTICAL
+      gravity = Gravity.CENTER
+      setPadding(inset, inset, inset, inset)
+      setBackgroundColor(getColor(R.color.quick_settings_reading_background))
+    }
+    root.addView(ProgressBar(this).apply { isIndeterminate = true })
+    root.addView(TextView(this).apply {
+      text = getString(R.string.quick_settings_reading_title)
+      setTextColor(getColor(R.color.quick_settings_reading_title))
+      textSize = 20f
+      gravity = Gravity.CENTER
+      setPadding(0, inset, 0, 8)
+    })
+    root.addView(TextView(this).apply {
+      text = getString(R.string.quick_settings_reading_body)
+      setTextColor(getColor(R.color.quick_settings_reading_body))
+      textSize = 14f
+      gravity = Gravity.CENTER
+    })
+    setContentView(root)
   }
 }

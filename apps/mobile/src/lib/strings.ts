@@ -99,7 +99,7 @@ export type StringKey =
   | 'receiptConfirmed'
   | 'receiptExpired'
   | 'receiptWaiting'
-  | 'sendFailed' | 'handoffNetworkError' | 'handoffExpiredError' | 'handoffClaimedError' | 'handoffUnauthorizedError' | 'handoffNotPairedError' | 'handoffDeliveryError' | 'handoffGenericError' | 'settingsTitle' | 'settingsBody' | 'settingsOpen' | 'pcLinkEyebrow' | 'pcDevicesKicker' | 'settingsEyebrow' | 'settingsAppearanceBody' | 'settingsLanguageBody' | 'sharedImageProcessing' | 'sharedImageNoResult' | 'sharedImageUnavailable' | 'sharedImageFailedTitle' | 'sharedImageUseCamera' | 'sharedImageHeading' | 'sharedImageBody' | 'screenCaptureCancelled' | 'screenCaptureUnavailable';
+  | 'sendFailed' | 'handoffNetworkError' | 'handoffExpiredError' | 'handoffClaimedError' | 'handoffUnauthorizedError' | 'handoffNotPairedError' | 'handoffDeliveryError' | 'handoffGenericError' | 'settingsTitle' | 'settingsBody' | 'settingsOpen' | 'pcLinkEyebrow' | 'pcDevicesKicker' | 'settingsEyebrow' | 'settingsAppearanceBody' | 'settingsLanguageBody' | 'sharedImageProcessing' | 'sharedImageNoResult' | 'sharedImageUnavailable' | 'sharedImageFailedTitle' | 'sharedImageUseCamera' | 'sharedImageHeading' | 'sharedImageBody' | 'sharedImageSelect' | 'imageScanEyebrow' | 'imageScanTitle' | 'imageScanBody' | 'imageScanChoose' | 'imageScanChoosing' | 'imageScanUnavailable' | 'imageScanBack' | 'screenCaptureCancelled' | 'screenCaptureUnavailable';
 
 const messages: Record<ResolvedLocale, Record<StringKey, string>> = {
   ja: {
@@ -224,6 +224,14 @@ const messages: Record<ResolvedLocale, Record<StringKey, string>> = {
     sharedImageUseCamera: 'カメラで続ける',
     sharedImageHeading: '画像を共有して読み取る',
     sharedImageBody: '写真やスクリーンショットの共有メニューで「QR Scan」を選ぶと、画像内のQRコード・バーコード・URL文字列をこの端末だけで読み取れます。',
+    sharedImageSelect: '画像を選んで読み取る',
+    imageScanEyebrow: '画像読取',
+    imageScanTitle: '画像を選んで読み取る',
+    imageScanBody: '写真やスクリーンショットから、QRコード・バーコード・URL文字列をこの端末だけで読み取ります。',
+    imageScanChoose: '画像を選ぶ',
+    imageScanChoosing: '画像を選択中…',
+    imageScanUnavailable: '画像を選べませんでした。もう一度試してください。',
+    imageScanBack: 'カメラに戻る',
     screenCaptureCancelled: '画面の読み取りを取り消しました。',
     screenCaptureUnavailable: '画面を読み取れませんでした。もう一度試してください。',
   },
@@ -349,6 +357,14 @@ const messages: Record<ResolvedLocale, Record<StringKey, string>> = {
     sharedImageUseCamera: 'Continue with camera',
     sharedImageHeading: 'Read a shared image',
     sharedImageBody: 'Choose “QR Scan” from a photo or screenshot’s share menu to read QR codes, barcodes, and URL text on this device only.',
+    sharedImageSelect: 'Choose an image to scan',
+    imageScanEyebrow: 'Image scan',
+    imageScanTitle: 'Choose an image to scan',
+    imageScanBody: 'Read QR codes, barcodes, and URL text from a photo or screenshot entirely on this device.',
+    imageScanChoose: 'Choose image',
+    imageScanChoosing: 'Choosing image…',
+    imageScanUnavailable: 'Could not choose the image. Try again.',
+    imageScanBack: 'Back to camera',
     screenCaptureCancelled: 'Screen reading was cancelled.',
     screenCaptureUnavailable: 'Could not read this screen. Try again.',
   },

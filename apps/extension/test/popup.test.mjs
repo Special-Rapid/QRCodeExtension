@@ -11,6 +11,7 @@ function createNode() {
     dataset: {},
     disabled: false,
     hidden: false,
+    click() { this.clicked = true; },
     textContent: "",
     value: ""
   };
@@ -21,6 +22,7 @@ function createCanvasNode() {
     ...createNode(),
     width: 216,
     height: 216,
+    toBlob(callback) { callback(new Blob(["png"], { type: "image/png" })); },
     getContext: () => ({
       clearRect() {},
       fillRect() {},
@@ -31,6 +33,7 @@ function createCanvasNode() {
 }
 
 function createEnvironment({ captureVisibleTab, activeTab = { id: 71, windowId: 17 }, queryActiveTab = async () => [activeTab], preferences = {}, systemDark = false, systemLanguage = "ja-JP", storageGet = async () => ({ popup_preferences: preferences }) }) {
+  const downloads = [];
   const scanPageButton = createNode();
   const scanButtonContent = createNode();
   const scanLoading = createNode();
@@ -45,6 +48,8 @@ function createEnvironment({ captureVisibleTab, activeTab = { id: 71, windowId: 
   const currentUrlValue = createNode();
   const currentUrlStatus = createNode();
   const copyCurrentUrlButton = createNode();
+  const downloadCurrentUrlSvgButton = createNode();
+  const downloadCurrentUrlPngButton = createNode();
   const themeSystem = { ...createNode(), dataset: { preference: "theme", value: "system" } };
   const themeLight = { ...createNode(), dataset: { preference: "theme", value: "light" } };
   const themeDark = { ...createNode(), dataset: { preference: "theme", value: "dark" } };
@@ -66,7 +71,9 @@ function createEnvironment({ captureVisibleTab, activeTab = { id: 71, windowId: 
     ["#current-url-unavailable", currentUrlUnavailable],
     ["#current-url-value", currentUrlValue],
     ["#current-url-status", currentUrlStatus],
-    ["#copy-current-url", copyCurrentUrlButton]
+    ["#copy-current-url", copyCurrentUrlButton],
+    ["#download-current-url-svg", downloadCurrentUrlSvgButton],
+    ["#download-current-url-png", downloadCurrentUrlPngButton]
   ]);
 
   return {
@@ -84,6 +91,8 @@ function createEnvironment({ captureVisibleTab, activeTab = { id: 71, windowId: 
       currentUrlValue,
       currentUrlStatus,
       copyCurrentUrlButton,
+      downloadCurrentUrlSvgButton,
+      downloadCurrentUrlPngButton,
       themeSystem,
       themeLight,
       themeDark,
@@ -102,17 +111,27 @@ function createEnvironment({ captureVisibleTab, activeTab = { id: 71, windowId: 
       querySelector: (selector) => selector === 'meta[name="theme-color"]' ? themeColorMeta : elements.get(selector),
       querySelectorAll: (selector) => selector === "[data-preference]" ? preferenceButtons : [],
       createElement: (tag) => {
-        if (tag !== "canvas") return createNode();
+        if (tag !== "canvas") {
+          const node = createNode();
+          if (tag === "a") node.click = () => { downloads.push({ href: node.href, filename: node.download }); };
+          return node;
+        }
         return {
           width: 0,
           height: 0,
+          toBlob(callback) { callback(new Blob(["png"], { type: "image/png" })); },
           getContext: () => ({
+            clearRect() {},
+            fillRect() {},
+            createImageData: (width, height) => ({ data: new Uint8ClampedArray(width * height * 4) }),
+            putImageData() {},
             drawImage() {},
             getImageData: () => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 })
           })
         };
       }
     },
+    downloads,
     navigator: { language: systemLanguage, languages: [systemLanguage], clipboard: { async writeText() {} } },
     matchMedia: () => ({ matches: systemDark, addEventListener() {} })
   };
@@ -225,6 +244,8 @@ test("renders the current normal Web URL as a QR code without changing page scan
     await waitFor(() => environment.elements.currentUrlQr.hidden === false);
     assert.equal(environment.elements.currentUrlValue.textContent, "https://example.com/current-page");
     assert.equal(environment.elements.copyCurrentUrlButton.disabled, false);
+    assert.equal(environment.elements.downloadCurrentUrlSvgButton.disabled, false);
+    assert.equal(environment.elements.downloadCurrentUrlPngButton.disabled, false);
     assert.equal(environment.elements.currentUrlQrFrame.dataset.state, "ready");
     assert.match(environment.elements.currentUrlStatus.textContent, /別の端末/);
   } finally {
@@ -243,6 +264,8 @@ test("makes browser-internal pages unavailable for current URL QR generation", a
     await waitFor(() => environment.elements.currentUrlQrFrame.dataset.state === "unsupported");
     assert.equal(environment.elements.currentUrlQr.hidden, true);
     assert.equal(environment.elements.copyCurrentUrlButton.disabled, true);
+    assert.equal(environment.elements.downloadCurrentUrlSvgButton.disabled, true);
+    assert.equal(environment.elements.downloadCurrentUrlPngButton.disabled, true);
     assert.match(environment.elements.currentUrlStatus.textContent, /通常のWebページ/);
   } finally {
     restoreEnvironment(previous);
@@ -280,6 +303,8 @@ test("keeps an oversized Web URL available to copy when it cannot fit in a QR co
     assert.equal(environment.elements.currentUrlUnavailable.hidden, false);
     assert.equal(environment.elements.currentUrlValue.textContent, oversizedUrl);
     assert.equal(environment.elements.copyCurrentUrlButton.disabled, false);
+    assert.equal(environment.elements.downloadCurrentUrlSvgButton.disabled, true);
+    assert.equal(environment.elements.downloadCurrentUrlPngButton.disabled, true);
     assert.match(environment.elements.currentUrlStatus.textContent, /容量を超え/);
   } finally {
     restoreEnvironment(previous);
@@ -307,6 +332,24 @@ test("copies the generated current URL and preserves it when copying fails", asy
     });
     assert.equal(environment.elements.currentUrlValue.textContent, "https://example.com/current-page");
     assert.match(environment.elements.currentUrlStatus.textContent, /選択してコピー/);
+  } finally {
+    restoreEnvironment(previous);
+  }
+});
+
+test("saves the ready current-page QR only as local SVG and high-resolution PNG", async () => {
+  const environment = createEnvironment({
+    activeTab: { id: 71, windowId: 17, url: "https://example.com/current-page" },
+    captureVisibleTab: async () => "data:image/png;base64,AA=="
+  });
+  const previous = await importPopup(environment, "current-url-downloads");
+
+  try {
+    await waitFor(() => environment.elements.currentUrlQr.hidden === false);
+    await environment.elements.downloadCurrentUrlSvgButton.trigger("click");
+    await environment.elements.downloadCurrentUrlPngButton.trigger("click");
+    assert.deepEqual(environment.downloads.map((entry) => entry.filename), ["qr-scan-current-url.svg", "qr-scan-current-url.png"]);
+    assert.match(environment.elements.currentUrlStatus.textContent, /高解像度PNG/);
   } finally {
     restoreEnvironment(previous);
   }

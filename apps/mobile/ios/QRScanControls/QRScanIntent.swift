@@ -7,7 +7,7 @@ struct OpenQRScanIntent: AppIntent {
   static var openAppWhenRun = true
 
   func perform() async throws -> some IntentResult & OpensIntent {
-    .result(opensIntent: OpenURLIntent(URL(string: "qrscan://scan?entry=control-center")!))
+    .result(opensIntent: OpenURLIntent(URL(string: "qrscan://image-scan?entry=control-center")!))
   }
 }
 

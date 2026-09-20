@@ -2,4 +2,6 @@
 <resources>
   <string name="quick_settings_scan_label">画面を読み取る</string>
   <string name="quick_settings_scan_description">画面内のQRコードとURL文字列を1枚だけ読み取る</string>
+  <string name="quick_settings_reading_title">画面を読み取り中</string>
+  <string name="quick_settings_reading_body">この端末内でQRコードとURL文字列を探しています</string>
 </resources>
