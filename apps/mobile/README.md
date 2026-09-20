@@ -25,4 +25,4 @@ npx eas-cli@latest build --platform android --profile production
 
 ### GitHub PRからのpreview build
 
-Expo GitHub Appをこのrepositoryへ接続し、base directoryを`apps/mobile`にすると、PRへ`eas-build-android:preview`を付けてAndroid internal previewを作れます。iOSは`eas-build-ios:preview`、両方は`eas-build-all:preview`を使います。通常のpushではmobile buildを作りません。
+Expo GitHub Appをこのrepositoryへ接続し、base directoryを`apps/mobile`にすると、PRへ`eas-build-android:preview`を付けてAndroid internal previewを作れます。通常のpushではmobile buildを作りません。iOSまたは両方をPR labelで起動する場合は、先に各platformの成功済みEAS buildと`preview.ios.image`を用意したうえで、`eas-build-ios:preview`または`eas-build-all:preview`を使います。
