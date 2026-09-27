@@ -5,7 +5,7 @@ import test from 'node:test';
 const read = (path) => readFile(new URL(path, import.meta.url), 'utf8');
 
 test('iOS image sharing and Android one-frame screen capture route only a short-lived token', async () => {
-  const [appConfig, manifest, tile, activity, extension, route, colors, nightColors] = await Promise.all([
+  const [appConfig, manifest, tile, activity, extension, route, colors, nightColors, strings, japaneseStrings] = await Promise.all([
     read('../app.json'),
     read('../android/app/src/main/AndroidManifest.xml'),
     read('../android/app/src/main/java/com/snkisk/qrscan/ScanTileService.kt'),
@@ -14,6 +14,8 @@ test('iOS image sharing and Android one-frame screen capture route only a short-
     read('../src/app/share-image.tsx'),
     read('../modules/qr-scan-ocr/android/src/main/res/values/quick_settings_colors.xml'),
     read('../modules/qr-scan-ocr/android/src/main/res/values-night/quick_settings_colors.xml'),
+    read('../modules/qr-scan-ocr/android/src/main/res/values/quick_settings_strings.xml'),
+    read('../modules/qr-scan-ocr/android/src/main/res/values-ja/quick_settings_strings.xml'),
   ]);
   assert.match(appConfig, /android\.permission\.FOREGROUND_SERVICE_MEDIA_PROJECTION/);
   assert.match(manifest, /FOREGROUND_SERVICE_MEDIA_PROJECTION/);
@@ -25,6 +27,10 @@ test('iOS image sharing and Android one-frame screen capture route only a short-
   assert.match(activity, /quick_settings_reading_background/);
   assert.match(colors, /quick_settings_reading_background/);
   assert.match(nightColors, /quick_settings_reading_background/);
+  assert.match(strings, /name="quick_settings_reading_title">Reading this screen/);
+  assert.match(strings, /name="quick_settings_reading_body">Looking for QR codes and URL text on this device/);
+  assert.match(japaneseStrings, /name="quick_settings_reading_title">画面を読み取り中/);
+  assert.match(japaneseStrings, /name="quick_settings_reading_body">この端末内でQRコードとURL文字列を探しています/);
   assert.match(extension, /NSExtensionActivationSupportsImageWithMaxCount/);
   assert.match(extension, /com\.apple\.share-services/);
   assert.match(route, /params\.shareToken = token/);
