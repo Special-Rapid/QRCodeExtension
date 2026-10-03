@@ -17,7 +17,7 @@ async function environment(t) {
   const root = path.join(temporary, "checkout");
   const cacheDir = path.join(temporary, "cache");
   await mkdir(root); await mkdir(cacheDir);
-  return { root, cacheDir };
+  return { root, cacheDir, offline: false };
 }
 async function put(root, file, bytes) { await mkdir(path.dirname(path.join(root, file)), { recursive: true }); await writeFile(path.join(root, file), bytes); }
 const forbiddenFetch = () => { throw new Error("Offline preparation must not use the network"); };
@@ -76,4 +76,22 @@ test("symlink destinations and cache inside checkout are rejected before writes"
   await assert.rejects(prepareNativeAssets({ ...env, cacheDir: path.join(env.root, ".cache"), lock: lock(asset()), offline: true }), /outside/u);
   await mkdir(path.join(env.root, "apps")); await symlink(env.cacheDir, path.join(env.root, "apps/mobile"));
   await assert.rejects(prepareNativeAssets({ ...env, lock: lock(asset()), offline: true }), /symlink/u);
+});
+
+
+test("origin guard refuses credentials, insecure URL, alternate port, query, fragment and other project", () => {
+  for (const url of ["http://images.snkisk.com/QRCodeExtension/a.png", "https://user@images.snkisk.com/QRCodeExtension/a.png", "https://images.snkisk.com:8443/QRCodeExtension/a.png", "https://images.snkisk.com/QRCodeExtension/a.png?token=secret", "https://images.snkisk.com/QRCodeExtension/a.png#fragment", "https://images.snkisk.com/another-project/a.png"]) assert.throws(() => validateLock(lock({ ...asset(), url })));
+});
+
+test("external symlink cannot put cache inside the checkout", async (t) => {
+  const env = await environment(t);
+  await symlink(env.root, path.join(env.cacheDir, "checkout-link"));
+  await assert.rejects(prepareNativeAssets({ ...env, cacheDir: path.join(env.cacheDir, "checkout-link/missing-cache"), lock: lock(asset()), offline: true }), /outside/u);
+});
+
+
+test("encoded HTTP length is not confused with decoded PNG length; decoded hash remains mandatory", async (t) => {
+  const env = await environment(t);
+  await prepareNativeAssets({ ...env, lock: lock(asset()), fetchImpl: async () => new Response(png, { headers: { "content-type": "image/png", "content-encoding": "gzip", "content-length": "14" } }) });
+  assert.deepEqual(await readFile(path.join(env.root, destination)), png);
 });

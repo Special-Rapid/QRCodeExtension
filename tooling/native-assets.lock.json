@@ -5,7 +5,7 @@
       "sha256": "b5611d3870d2b8551fe65da4742d78b9e6b8556c3c47e0039afddd6a7e4646fb",
       "bytes": 1239,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/f6a34a66-9acd-4d2d-82e1-f22e3332f006.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/drawable-hdpi/splashscreen_logo.png"
       ]
@@ -14,7 +14,7 @@
       "sha256": "5d874b90b0da0a16319221ece6c5fda13146f7006f22029c2fa408617d7661ae",
       "bytes": 925,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/734749be-6e93-440d-9e8e-d946b0d7a5c6.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/drawable-mdpi/splashscreen_logo.png"
       ]
@@ -23,7 +23,7 @@
       "sha256": "85317b3eee8d1e825f054aa3c1d2814b0c2b4ddb425577ec19fdcbf329566609",
       "bytes": 2029,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/5504555f-6eaa-47e2-bb92-490b03f77f90.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/drawable-xhdpi/splashscreen_logo.png"
       ]
@@ -32,7 +32,7 @@
       "sha256": "48076c071e476300db9ff51efd547bd3ff4bf327f0725e3d713da91eb3bb81c9",
       "bytes": 3498,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/36fac766-c2e4-4154-b3ab-b114a4fa7b74.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/drawable-xxhdpi/splashscreen_logo.png"
       ]
@@ -41,7 +41,7 @@
       "sha256": "a7de7b8096159ced3f7229023f3a0bf34ff7ba65f456a48beb13e4538c1fc440",
       "bytes": 6454,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/3567b50c-1641-4e2a-b732-5c24c3af237a.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/drawable-xxxhdpi/splashscreen_logo.png"
       ]
@@ -50,7 +50,7 @@
       "sha256": "fb9332f1b047f6f6dcb069cb487c4058efbb1523e3627ba815c92b8f7e39069c",
       "bytes": 855,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/c92d0e58-bfc9-49a8-a1e3-662ca1013a37.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-hdpi/ic_launcher.webp"
       ]
@@ -59,7 +59,7 @@
       "sha256": "ddfc089fd19e578ecf527c02b77366fbed39d50f4985ad8f1657c02609ac39d1",
       "bytes": 473,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/da214cf6-d3f8-4131-81fc-10c73ac424ac.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-hdpi/ic_launcher_background.webp"
       ]
@@ -68,7 +68,7 @@
       "sha256": "4a0d8a24939c34cfd7ee42d6eaef0e9dfb961c4c821dd6fe9cf598a059cc628e",
       "bytes": 686,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/46f599cb-30b9-4128-a2f2-ef0eb65a801c.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.webp"
       ]
@@ -77,7 +77,7 @@
       "sha256": "e957110b86d3cc56ff8986d1c5d2a9bf3f4ec3c2e7029b2b8bfda6242f9cc761",
       "bytes": 637,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/850bd3a9-642c-47a5-8998-0e5a2b1721c3.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-hdpi/ic_launcher_monochrome.webp"
       ]
@@ -86,7 +86,7 @@
       "sha256": "898dc64d94996ba07d48c7fdcac6703a140614c7887e94bc8b40920ac0bfeb84",
       "bytes": 1526,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/91788ba3-2431-4c2e-8985-fdd2385b673e.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-hdpi/ic_launcher_round.webp"
       ]
@@ -95,7 +95,7 @@
       "sha256": "99e11acb4bd1096f4c737e5e461939efee3685b2b7ed698cb9c016741d49e508",
       "bytes": 551,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/4199c217-6307-4689-bdd5-ee40ba4e80df.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-mdpi/ic_launcher.webp"
       ]
@@ -104,7 +104,7 @@
       "sha256": "e5b62b558dece0891470995973aed7d66c7f9f74eb4e68d68e7a4e2194e2c34b",
       "bytes": 304,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/ba0ddd2d-6a59-4f5c-b33a-063d53cc0f1f.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-mdpi/ic_launcher_background.webp"
       ]
@@ -113,7 +113,7 @@
       "sha256": "6a3a270b0d2cb6ce53ace542a94974861f6601d1a289f6d8530ad5fcd9bb8188",
       "bytes": 530,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/d1a808d9-5325-4fa1-9db3-b26058cf31ad.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.webp"
       ]
@@ -122,7 +122,7 @@
       "sha256": "edd7e457e731703be0ca8d5b2f1f14a90b7b3e4ebdc286d71a0301e1d021a99d",
       "bytes": 454,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/09c37ff8-9adf-4d2f-9046-4ad8a7491111.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-mdpi/ic_launcher_monochrome.webp"
       ]
@@ -131,7 +131,7 @@
       "sha256": "2e489c6addb8bc6011c88708953491e3d6c814a7c52c9d8c9dd7d3a1fe67c850",
       "bytes": 1024,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/049a0db1-de37-4136-b0fd-bde276da4db3.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-mdpi/ic_launcher_round.webp"
       ]
@@ -140,7 +140,7 @@
       "sha256": "aad2fbed61cec565f73ff03c3a7583bc4f9e627f2b62db8f07d4a716b4a2328e",
       "bytes": 628,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/51828aa7-5881-47a5-a88f-401d39bf069f.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-xhdpi/ic_launcher.webp"
       ]
@@ -149,7 +149,7 @@
       "sha256": "3bff63b3f8571a7e0b0a311caece0efd2c7d86397cc0c46ce5afabd3cffecb11",
       "bytes": 627,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/e924da22-2e1a-45b1-a828-83f360c5d391.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-xhdpi/ic_launcher_background.webp"
       ]
@@ -158,7 +158,7 @@
       "sha256": "5233b5cb1f33d3a326bb7d52c4269718a66e57d6f56151c4c736b9eacc329642",
       "bytes": 834,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/c9f535c0-1b0f-455c-a274-f249c5cbbb65.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.webp"
       ]
@@ -167,7 +167,7 @@
       "sha256": "8153c775fca66e6c458fc9f9e2ef2178ee918665d908a93eed838c15897aac52",
       "bytes": 678,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/0f237d9d-4529-4d1c-9ca9-e61cd65dda3c.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-xhdpi/ic_launcher_monochrome.webp"
       ]
@@ -176,7 +176,7 @@
       "sha256": "0de1da684b2e322af54527478f4407927f7c0a4d469bcb1b84f2848022b003ba",
       "bytes": 1606,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/944d4a10-1825-4e85-b70b-5c9652658773.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.webp"
       ]
@@ -185,7 +185,7 @@
       "sha256": "1fdaf7e5d9bdc6bf1a9745fc4bdbd7a930ecbe274dd540ff29358e0520437c54",
       "bytes": 775,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/bc09b6a5-af72-485d-aab6-86d333c18d6f.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.webp"
       ]
@@ -194,7 +194,7 @@
       "sha256": "8774a1f8e04a30ed7a3d556ba40a7e211ee01dca376856a1ed4cb39254d088b5",
       "bytes": 898,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/337c7520-865d-416f-92ab-a569d3effb3c.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_background.webp"
       ]
@@ -203,7 +203,7 @@
       "sha256": "7a94b4d3656bb8fdb4e6ec11603fd0bf03888d5108a32dab8f63227548235520",
       "bytes": 1096,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/7cad00d9-8e5e-48bd-91d4-c4a241eed3c8.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.webp"
       ]
@@ -212,7 +212,7 @@
       "sha256": "eaa9727720042b3ae315e9336dba4d87ec5408ae94b9951e97ce39f138d9695c",
       "bytes": 1002,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/ed3ac158-56d9-4107-a08f-85b298f3a0a8.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_monochrome.webp"
       ]
@@ -221,7 +221,7 @@
       "sha256": "1aea2a98be4193d419cca8dba956c22bdfbafadb22955bcfbd74be5fee7778c2",
       "bytes": 2246,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/c4318df7-f6f6-4edc-83b6-5b8a3286d1e3.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.webp"
       ]
@@ -230,7 +230,7 @@
       "sha256": "3c921ba09cef338ad45593e34e3c58a15e8548b22543aa125203bcefc6d82cc8",
       "bytes": 664,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/4599cce9-f7e6-46f6-b16c-1b356620668e.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp"
       ]
@@ -239,7 +239,7 @@
       "sha256": "776dc704ce7ffa20dd819fbe33290b50cb775369f4ef7a0a396605eada6918dd",
       "bytes": 1546,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/6f9f6fa3-4c30-4bd7-a613-0b108a4d5c6b.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_background.webp"
       ]
@@ -248,7 +248,7 @@
       "sha256": "4382ccc1084655bb61ea3c10e80a71499ff36adb262be4d24300d34ed5f21bb3",
       "bytes": 1548,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/497f6156-bdda-4438-82e9-f357218fe69f.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.webp"
       ]
@@ -257,7 +257,7 @@
       "sha256": "ccc5a59eac47100377a1d0c47d2edf8ef1890c0e6fd263ec37e1a57ea32f3c6a",
       "bytes": 1302,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/32156593-30bb-4c54-b03b-4427b357add9.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_monochrome.webp"
       ]
@@ -266,7 +266,7 @@
       "sha256": "c55ce42e2dd6ee8075e2c7f65bf272ac5b6fb6b6542b1ed2f7b0ad4db9407fbf",
       "bytes": 2704,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/84689362-b686-4df9-9120-a4d879771f25.png",
       "destinations": [
         "apps/mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.webp"
       ]
@@ -275,7 +275,7 @@
       "sha256": "8247d79a2b31328fe4e330a973e6fae16924ed9aebd72c64d464d6856ab18c72",
       "bytes": 53681,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/363d8b7a-b9dd-44ce-9f52-eaa6e212760f.png",
       "destinations": [
         "apps/mobile/assets/expo.icon/Assets/grid.png",
         "apps/mobile/ios/QRScan/expo.icon/Assets/grid.png"
@@ -285,7 +285,7 @@
       "sha256": "8d8853e230c9d95ca2542a878660c13918b9552f6e76c39ac2a246a15186a126",
       "bytes": 1223,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/78e9c989-ffc0-4990-86a1-9a9454d6d08f.png",
       "destinations": [
         "apps/mobile/ios/QRScan/Images.xcassets/SplashScreenLogo.imageset/image.png"
       ]
@@ -294,7 +294,7 @@
       "sha256": "6bf9cc62dd54f0df629bf3469e2d74b2f654c64f25b738d9e1183c54132e40c7",
       "bytes": 2814,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/4c04dce7-c03f-498f-afb9-50822d86ea84.png",
       "destinations": [
         "apps/mobile/ios/QRScan/Images.xcassets/SplashScreenLogo.imageset/image@2x.png"
       ]
@@ -303,7 +303,7 @@
       "sha256": "eff2aa316d3b46ba75a6d8443a7befe7e16be16d13bc4c6743798eec68e42e78",
       "bytes": 3365,
       "mime": "image/png",
-      "url": null,
+      "url": "https://images.snkisk.com/QRCodeExtension/13ef41e6-e519-4c3b-95b7-c747d1d85ca0.png",
       "destinations": [
         "apps/mobile/ios/QRScan/Images.xcassets/SplashScreenLogo.imageset/image@3x.png"
       ]

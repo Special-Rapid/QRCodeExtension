@@ -47,3 +47,4 @@ dist/
 /apps/mobile/ios/QRScan/Images.xcassets/SplashScreenLogo.imageset/image.png
 /apps/mobile/ios/QRScan/Images.xcassets/SplashScreenLogo.imageset/image@2x.png
 /apps/mobile/ios/QRScan/Images.xcassets/SplashScreenLogo.imageset/image@3x.png
+/apps/mobile/android/app/src/main/res/drawable/ic_qr_scan_tile.xml

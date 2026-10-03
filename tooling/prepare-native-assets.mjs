@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, rename, rm, stat, lstat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rename, rm, stat, lstat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -43,6 +43,19 @@ async function assertNoSymlinks(root, destination) {
   }
 }
 
+async function canonicalPath(value) {
+  const missing = [];
+  let current = path.resolve(value);
+  for (;;) {
+    try { return path.join(await realpath(current), ...missing); }
+    catch (error) {
+      if (error.code !== "ENOENT") throw error;
+      missing.unshift(path.basename(current));
+      current = path.dirname(current);
+    }
+  }
+}
+
 async function atomicWrite(destination, bytes) {
   await mkdir(path.dirname(destination), { recursive: true });
   const temporary = await mkdtemp(path.join(path.dirname(destination), ".qr-asset-"));
@@ -58,7 +71,7 @@ async function download(asset, fetchImpl) {
   if (!response.ok) throw new Error(`Native asset HTTP ${response.status}: ${asset.sha256}`);
   if (response.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== asset.mime) throw new Error(`Native asset response MIME mismatch: ${asset.sha256}`);
   const length = response.headers.get("content-length");
-  if (length !== null && Number(length) !== asset.bytes) throw new Error(`Native asset response length mismatch: ${asset.sha256}`);
+  if (length !== null && (!response.headers.get("content-encoding") || response.headers.get("content-encoding").toLowerCase() === "identity") && Number(length) !== asset.bytes) throw new Error(`Native asset response length mismatch: ${asset.sha256}`);
   if (!response.body) throw new Error("Native asset response body missing.");
   const chunks = [];
   let size = 0;
@@ -72,8 +85,8 @@ async function download(asset, fetchImpl) {
 
 export async function prepareNativeAssets({ root = repositoryRoot, lock, cacheDir = process.env.QR_ASSET_CACHE_DIR || path.join(os.homedir(), ".cache", "qr-scan", "sha256"), offline = process.env.QR_ASSETS_OFFLINE === "1", fetchImpl = fetch } = {}) {
   const assets = validateLock(lock ?? JSON.parse(await readFile(path.join(root, "tooling/native-assets.lock.json"), "utf8")));
-  root = path.resolve(root);
-  cacheDir = path.resolve(cacheDir);
+  root = await realpath(root);
+  cacheDir = await canonicalPath(cacheDir);
   if (cacheDir === root || cacheDir.startsWith(root + path.sep)) throw new Error("Native asset cache must be outside the Git checkout.");
   // Preflight every destination and validate every byte before touching bundle inputs.
   for (const asset of assets) for (const destination of asset.destinations) await assertNoSymlinks(root, destination);

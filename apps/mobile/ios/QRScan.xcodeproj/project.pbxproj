@@ -370,6 +370,15 @@
 			inputPaths = ();
 			name = "Prepare locked brand assets";
 			outputPaths = (
+				"$(SRCROOT)/../../../apps/mobile/assets/expo.icon/Assets/qr-scan-icon.svg",
+				"$(SRCROOT)/../../../apps/extension/src/icon-128.png",
+				"$(SRCROOT)/../../../apps/mobile/assets/images/icon.png",
+				"$(SRCROOT)/../../../apps/mobile/assets/images/favicon.png",
+				"$(SRCROOT)/../../../apps/mobile/assets/images/splash-icon.png",
+				"$(SRCROOT)/../../../apps/mobile/assets/images/android-icon-background.png",
+				"$(SRCROOT)/../../../apps/mobile/assets/images/android-icon-foreground.png",
+				"$(SRCROOT)/../../../apps/mobile/assets/images/android-icon-monochrome.png",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/drawable/ic_qr_scan_tile.xml",
 				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/drawable-hdpi/splashscreen_logo.png",
 				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/drawable-mdpi/splashscreen_logo.png",
 				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/drawable-xhdpi/splashscreen_logo.png",

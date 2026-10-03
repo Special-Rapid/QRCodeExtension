@@ -58,7 +58,8 @@
     "preios": "npm run prepare:assets",
     "preweb": "npm run prepare:assets",
     "precheck": "npm run prepare:assets",
-    "eas-build-post-install": "npm run prepare:assets"
+    "eas-build-post-install": "npm run prepare:assets",
+    "postinstall": "npm run prepare:assets"
   },
   "private": true
 }

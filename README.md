@@ -73,7 +73,7 @@ This project is licensed under the [MIT License](LICENSE).
 
 ### ビルド用画像とGit
 
-編集用正本`assets/brand/qr-scan-icon.svg`とIcon Composerの編集用SVG、inline SVGはソースとして版管理します。PNGと派生SVGのコピーはGitに保存せず、build前に既存パスへ生成・復元します。最終extension/native配布物には従来どおり画像を同梱し、アプリ起動時にCDNへ取りに行きません。iOS実プロジェクトのIcon Composer定義とExpo設定側の定義は、この移行では変更しません。
+編集用正本`assets/brand/qr-scan-icon.svg`とIcon Composerの編集用SVG、inline SVGはソースとして版管理します。PNG・派生SVG・生成Android vector XMLのコピーはGitに保存せず、build前に既存パスへ生成・復元します。最終extension/native配布物には従来どおり画像を同梱し、アプリ起動時にCDNへ取りに行きません。iOS実プロジェクトのIcon Composer定義とExpo設定側の定義は、この移行では変更しません。
 
 ```sh
 npm ci
@@ -93,4 +93,4 @@ QR_ASSETS_OFFLINE=1 npm run prepare:native-assets
 
 依存packageのインストール用cacheは別途必要です。cache未準備・破損では安全に停止します。破損したhashファイルは原因確認後に明示的に除去し、オンライン準備をやり直してください。PNG原本は確定URLとhashを更新せず上書きしません。ブランド更新では正本・固定原本・生成recipe・配布物の確認を一緒に行います。
 
-root CI、mobileのnpm start/android/ios/web/check、EAS post-install、直接Gradle preBuild、Xcodeのresource compile前に準備を接続しています。extension build/testはCDN不要で正本SVGから生成します。`npx expo`を直接実行する場合は先に`npm run prepare:native-assets`を行ってください。cacheと入力を揃えたclean checkoutで、生成のpixel/dimensionsと固定入力の完全hashを確認します。
+root CI、mobileのnpm postinstall（EAS prebuild前）とstart/android/ios/web/check、EAS post-install、直接Gradle preBuild、Xcodeのresource compile前に準備を接続しています。extension build/testはCDN不要で正本SVGから生成します。`npx expo`を直接実行する場合は先に`npm run prepare:native-assets`を行ってください。cacheと入力を揃えたclean checkoutで、生成のpixel/dimensionsと固定入力の完全hashを確認します。
