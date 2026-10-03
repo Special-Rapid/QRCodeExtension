@@ -5,11 +5,15 @@ import { createRequire } from "node:module";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 let PNG;
-try { ({ PNG } = createRequire(import.meta.url)("pngjs")); }
-catch (error) {
-  if (error.code !== "MODULE_NOT_FOUND") throw error;
-  ({ PNG } = createRequire(path.join(root, "apps/mobile/package.json"))("pngjs"));
+let resolutionError;
+for (const require of [createRequire(import.meta.url), createRequire(path.join(root, "apps/extension/package.json")), createRequire(path.join(root, "apps/mobile/package.json"))]) {
+  try { ({ PNG } = require("pngjs")); break; }
+  catch (error) {
+    if (error.code !== "MODULE_NOT_FOUND") throw error;
+    resolutionError = error;
+  }
 }
+if (!PNG) throw resolutionError;
 const source = path.join(root, "assets/brand/qr-scan-icon.svg");
 const targets = [
   { file: "apps/mobile/assets/expo.icon/Assets/qr-scan-icon.svg", kind: "svg" },

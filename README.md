@@ -77,6 +77,7 @@ This project is licensed under the [MIT License](LICENSE).
 
 ```sh
 npm ci
+npm --prefix apps/handoff ci
 npm --prefix apps/mobile ci
 npm run prepare:native-assets
 npm run check
