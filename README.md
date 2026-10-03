@@ -50,6 +50,10 @@ npm run check:extension
 - [モバイルアプリ](apps/mobile/README.md)
 - [PC受信箱とWorker](apps/handoff/README.md)
 
+## ブランド画像
+
+`assets/brand/qr-scan-icon.svg`はブランド生成の正本です。Chrome拡張・native用の必須アイコンは引き続きローカル生成・同梱します。Web受信箱のfaviconとロゴは、同じ生成済み128px PNGを`images.snkisk.com`から配信するため、handoffの公開ディレクトリにはコピーを生成しません。ブランドを更新する際は新しい配信用PNGを公開してから、favicon・ロゴのURLとブランド契約テストを一緒に更新してください。
+
 ## CI と配布ビルド
 
 GitHub Actionsの`Verify`は、PR・`main`へのpush・手動実行時に、アプリ、tooling、lockfile、workflow自体が変わった場合だけ`npm run check`を実行します。`docs/`だけの変更では起動せず、同じPRまたはbranchへ新しいcommitが来た場合は古いverifyを取消します。

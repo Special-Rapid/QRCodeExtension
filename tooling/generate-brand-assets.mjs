@@ -8,7 +8,6 @@ const source = path.join(root, "assets/brand/qr-scan-icon.svg");
 const targets = [
   { file: "apps/mobile/assets/expo.icon/Assets/qr-scan-icon.svg", kind: "svg" },
   { file: "apps/extension/src/icon-128.png", size: 128, layers: "full" },
-  { file: "apps/handoff/public/icon-128.png", size: 128, layers: "full" },
   { file: "apps/mobile/assets/images/icon.png", size: 1024, layers: "full" },
   { file: "apps/mobile/assets/images/favicon.png", size: 48, layers: "full" },
   { file: "apps/mobile/assets/images/splash-icon.png", size: 228, layers: "full" },
