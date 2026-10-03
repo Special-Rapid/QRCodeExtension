@@ -180,3 +180,12 @@ dependencies {
         implementation jscFlavor
     }
 }
+
+// Restore immutable build inputs before any resource compilation, including direct Gradle builds.
+def prepareLockedBrandAssets = tasks.register("prepareLockedBrandAssets", Exec) {
+    workingDir rootProject.projectDir.parentFile
+    commandLine(System.getenv("NODE_BINARY") ?: "node", "../../tooling/prepare-build-assets.mjs", "--native")
+}
+tasks.matching { it.name == "preBuild" }.configureEach {
+    dependsOn prepareLockedBrandAssets
+}

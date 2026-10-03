@@ -6,6 +6,7 @@ on:
     paths:
       - 'apps/**'
       - 'tooling/**'
+      - 'assets/brand/**'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/verify.yml'
@@ -13,6 +14,7 @@ on:
     paths:
       - 'apps/**'
       - 'tooling/**'
+      - 'assets/brand/**'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/verify.yml'
@@ -54,6 +56,15 @@ jobs:
           npm --prefix apps/extension ci
           npm --prefix apps/handoff ci
           npm --prefix apps/mobile ci
+
+      - name: Cache verified native image inputs
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/qr-scan/sha256
+          key: ${{ runner.os }}-qr-native-assets-${{ hashFiles('tooling/native-assets.lock.json') }}
+
+      - name: Prepare bundled image assets
+        run: npm run prepare:native-assets
 
       - name: Run all repository checks
         run: npm run check

@@ -236,6 +236,7 @@
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
 				087943F79A06659727CF5F47 /* [Expo] Configure project */,
+				A22000000000000000000001 /* Prepare locked brand assets */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
@@ -361,6 +362,55 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		A22000000000000000000001 /* Prepare locked brand assets */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = ();
+			inputPaths = ();
+			name = "Prepare locked brand assets";
+			outputPaths = (
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/drawable-hdpi/splashscreen_logo.png",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/drawable-mdpi/splashscreen_logo.png",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/drawable-xhdpi/splashscreen_logo.png",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/drawable-xxhdpi/splashscreen_logo.png",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/drawable-xxxhdpi/splashscreen_logo.png",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-hdpi/ic_launcher.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-hdpi/ic_launcher_background.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-hdpi/ic_launcher_monochrome.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-hdpi/ic_launcher_round.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-mdpi/ic_launcher.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-mdpi/ic_launcher_background.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-mdpi/ic_launcher_monochrome.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-mdpi/ic_launcher_round.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-xhdpi/ic_launcher.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-xhdpi/ic_launcher_background.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-xhdpi/ic_launcher_monochrome.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_background.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_monochrome.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_background.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_monochrome.webp",
+				"$(SRCROOT)/../../../apps/mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.webp",
+				"$(SRCROOT)/../../../apps/mobile/assets/expo.icon/Assets/grid.png",
+				"$(SRCROOT)/../../../apps/mobile/ios/QRScan/expo.icon/Assets/grid.png",
+				"$(SRCROOT)/../../../apps/mobile/ios/QRScan/Images.xcassets/SplashScreenLogo.imageset/image.png",
+				"$(SRCROOT)/../../../apps/mobile/ios/QRScan/Images.xcassets/SplashScreenLogo.imageset/image@2x.png",
+				"$(SRCROOT)/../../../apps/mobile/ios/QRScan/Images.xcassets/SplashScreenLogo.imageset/image@3x.png",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\nif [ -f \"$PROJECT_DIR/.xcode.env\" ]; then . \"$PROJECT_DIR/.xcode.env\"; fi\nif [ -f \"$PROJECT_DIR/.xcode.env.local\" ]; then . \"$PROJECT_DIR/.xcode.env.local\"; fi\n\"${NODE_BINARY:-node}\" \"$PROJECT_DIR/../../../tooling/prepare-build-assets.mjs\" --native\n";
+		};
+
 		00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;

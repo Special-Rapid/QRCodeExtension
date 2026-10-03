@@ -39,6 +39,7 @@
     "@types/react": "~19.2.2",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~57.0.1",
+    "pngjs": "7.0.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -50,7 +51,14 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test test/**/*.test.mjs",
     "check": "npm run lint && npm run typecheck && npm test",
-    "doctor": "npx expo-doctor"
+    "doctor": "npx expo-doctor",
+    "prepare:assets": "node ../../tooling/prepare-build-assets.mjs --native",
+    "prestart": "npm run prepare:assets",
+    "preandroid": "npm run prepare:assets",
+    "preios": "npm run prepare:assets",
+    "preweb": "npm run prepare:assets",
+    "precheck": "npm run prepare:assets",
+    "eas-build-post-install": "npm run prepare:assets"
   },
   "private": true
 }
