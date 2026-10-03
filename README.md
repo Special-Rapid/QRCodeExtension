@@ -69,3 +69,29 @@ production build / store submitは、SemVerのversion tagを作成したrelease 
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+
+
+### ビルド用画像とGit
+
+編集用正本`assets/brand/qr-scan-icon.svg`とIcon Composerの編集用SVG、inline SVGはソースとして版管理します。PNG・派生SVG・生成Android vector XMLのコピーはGitに保存せず、build前に既存パスへ生成・復元します。最終extension/native配布物には従来どおり画像を同梱し、アプリ起動時にCDNへ取りに行きません。iOS実プロジェクトのIcon Composer定義とExpo設定側の定義は、この移行では変更しません。
+
+```sh
+npm ci
+npm --prefix apps/handoff ci
+npm --prefix apps/mobile ci
+npm run prepare:native-assets
+npm run check
+```
+
+`tooling/native-assets.lock.json`は確認済みCDN URL、SHA-256、bytes、MIME、同梱先を固定します。取得はHTTPSの`images.snkisk.com/QRCodeExtension/`のみでredirectを許可せず、全入力を検証してから同梱先へ書き込みます。HTTP/MIME/サイズ/hash不一致や未公開URLではbuildを停止します。既存の未追跡画像をfallbackに使いません。25個のAndroid `.webp`パスは元からPNG bytesのため、既存byteとパスを保持しています。
+
+cacheはGit外の`~/.cache/qr-scan/sha256`です。`QR_ASSET_CACHE_DIR`で別のGit外ディレクトリを指定できます。オンライン準備を一度行ったcacheを使うと、画像についてネットワーク不要で同じbyteを復元できます。
+
+```sh
+QR_ASSETS_OFFLINE=1 npm run prepare:native-assets
+# または node tooling/prepare-build-assets.mjs --native --offline
+```
+
+依存packageのインストール用cacheは別途必要です。cache未準備・破損では安全に停止します。破損したhashファイルは原因確認後に明示的に除去し、オンライン準備をやり直してください。PNG原本は確定URLとhashを更新せず上書きしません。ブランド更新では正本・固定原本・生成recipe・配布物の確認を一緒に行います。
+
+root CI、mobileのnpm postinstall（EAS prebuild前）とstart/android/ios/web/check、EAS post-install、直接Gradle preBuild、Xcodeのresource compile前に準備を接続しています。extension build/testはCDN不要で正本SVGから生成します。`npx expo`を直接実行する場合は先に`npm run prepare:native-assets`を行ってください。cacheと入力を揃えたclean checkoutで、生成のpixel/dimensionsと固定入力の完全hashを確認します。

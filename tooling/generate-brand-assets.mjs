@@ -1,9 +1,19 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { PNG } from "pngjs";
+import { createRequire } from "node:module";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+let PNG;
+let resolutionError;
+for (const require of [createRequire(import.meta.url), createRequire(path.join(root, "apps/extension/package.json")), createRequire(path.join(root, "apps/mobile/package.json"))]) {
+  try { ({ PNG } = require("pngjs")); break; }
+  catch (error) {
+    if (error.code !== "MODULE_NOT_FOUND") throw error;
+    resolutionError = error;
+  }
+}
+if (!PNG) throw resolutionError;
 const source = path.join(root, "assets/brand/qr-scan-icon.svg");
 const targets = [
   { file: "apps/mobile/assets/expo.icon/Assets/qr-scan-icon.svg", kind: "svg" },
@@ -92,7 +102,10 @@ export async function generate({ check = false } = {}) {
       const current = PNG.sync.read(currentBuffer);
       const rendered = PNG.sync.read(expected);
       if (current.width !== rendered.width || current.height !== rendered.height || !current.data.equals(rendered.data)) mismatches.push(target.file);
-    } else await writeFile(destination, expected);
+    } else {
+      await mkdir(path.dirname(destination), { recursive: true });
+      await writeFile(destination, expected);
+    }
   }
   if (mismatches.length) throw new Error(`Brand PNG assets are stale: ${mismatches.join(", ")}. Run npm run generate:brand-assets.`);
 }
