@@ -1,3 +1,4 @@
+import { peerDevices, selectedPeerTargets } from '../lib/peers';
 import { CameraView, type BarcodeScanningResult, type BarcodeType, useCameraPermissions } from 'expo-camera';
 import * as Clipboard from 'expo-clipboard';
 import { File } from 'expo-file-system';
@@ -113,7 +114,8 @@ export default function ScannerScreen() {
         const storedIdentity = await loadMobileIdentity();
         const identity = storedIdentity ? await refreshMobileIdentityLabel(storedIdentity).catch(() => storedIdentity) : null;
         if (!identity) { if (active) setPaired(false); return; }
-        const { deviceCount } = await getMobileDevices(identity);
+        const selected = await selectedPeerTargets();
+        const deviceCount = selected === null ? (await getMobileDevices(identity)).deviceCount : (await peerDevices()).filter(device => selected.includes(device.id)).length;
         if (active) setPaired(deviceCount > 0);
       } catch { if (active) setPaired(false); }
       finally { if (active) setPairingReady(true); }

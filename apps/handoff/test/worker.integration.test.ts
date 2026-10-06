@@ -2,6 +2,7 @@ import { env, runInDurableObject, SELF } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 const schema = `
+  CREATE TABLE IF NOT EXISTS peer_links (id TEXT PRIMARY KEY, first_id TEXT NOT NULL, second_id TEXT NOT NULL, created_at INTEGER NOT NULL, revoked_at INTEGER);
   CREATE TABLE IF NOT EXISTS receivers (id TEXT PRIMARY KEY, token_hash TEXT NOT NULL, kind TEXT NOT NULL, label TEXT NOT NULL, created_at INTEGER NOT NULL, revoked_at INTEGER);
   CREATE TABLE IF NOT EXISTS pairings (id TEXT PRIMARY KEY, web_receiver_id TEXT NOT NULL, mobile_receiver_id TEXT NOT NULL, created_at INTEGER NOT NULL, revoked_at INTEGER);
   CREATE TABLE IF NOT EXISTS receiver_connectors (id TEXT PRIMARY KEY, receiver_id TEXT NOT NULL, token_hash TEXT NOT NULL, extension_id TEXT NOT NULL, label TEXT NOT NULL, created_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL, revoked_at INTEGER);
@@ -11,7 +12,7 @@ const schema = `
 
 beforeEach(async () => {
   await env.DB.exec(schema);
-  await env.DB.exec('DELETE FROM connector_link_tokens; DELETE FROM receiver_delivery_channels; DELETE FROM receiver_connectors; DELETE FROM pairings; DELETE FROM receivers;');
+  await env.DB.exec('DELETE FROM peer_links; DELETE FROM connector_link_tokens; DELETE FROM receiver_delivery_channels; DELETE FROM receiver_connectors; DELETE FROM pairings; DELETE FROM receivers;');
 });
 
 async function api(path: string, init: RequestInit = {}) {

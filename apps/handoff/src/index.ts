@@ -1,3 +1,4 @@
+import { peerApi, peerRoom, peerAlarm, adoptWebDevice, revokePersistedPair } from "./peers";
 import { DurableObject } from "cloudflare:workers";
 import { createConfirmationPhrase, createOpaqueToken, createPairCode, HANDOFF_TTL_MS, hashToken, isSafeOpenUrl, normalizePairCode, PAIR_TTL_MS, type ReceiverRole, validateLabel, validatePayload } from "./protocol";
 import { deliverHandoffPush, handoffDeliveryRoute, sendHandoffPush, type DeliveryChannel } from "./push";
@@ -61,6 +62,7 @@ export class PairingRoom extends DurableObject<Env> {
 
   async fetch(request: Request) {
     const url = new URL(request.url);
+    if (url.pathname.startsWith("/peer/")) return this.ctx.blockConcurrencyWhile(() => peerRoom(this.ctx, this.env, request));
     if (url.pathname === "/rate" && request.method === "POST") return this.rateLimit();
 
     if (request.method === "GET" && url.pathname === "/status") return this.status(request);
@@ -81,6 +83,7 @@ export class PairingRoom extends DurableObject<Env> {
   }
 
   async alarm() {
+    await peerAlarm(this.ctx, this.env);
     const session = await this.getSession();
     const events = await this.getEvents();
     const now = Date.now();
@@ -111,13 +114,19 @@ export class PairingRoom extends DurableObject<Env> {
     const code = normalizePairCode(String(body.code ?? ""));
     if (!code) return json({ error: "invalid_code" }, 400);
 
-    const token = createOpaqueToken();
+    let token = createOpaqueToken();
+    let web = { id: crypto.randomUUID(), tokenHash: await hashToken(token), label: validateLabel(body.label, "このブラウザ"), confirmed: false };
+    if (body.webReceiverId && body.webToken) {
+      const existing = await this.env.DB.prepare("SELECT id,token_hash,label FROM receivers WHERE id = ? AND kind = 'web' AND revoked_at IS NULL").bind(body.webReceiverId).first<{id:string;token_hash:string;label:string}>();
+      if (!existing || existing.token_hash !== await hashToken(String(body.webToken))) return json({error:"unauthorized"},401);
+      token=String(body.webToken);web={id:existing.id,tokenHash:existing.token_hash,label:existing.label,confirmed:false};
+    }
     const session: PairSession = {
       code,
       phrase: createConfirmationPhrase(),
       expiresAt: Date.now() + PAIR_TTL_MS,
       status: "pending",
-      web: { id: crypto.randomUUID(), tokenHash: await hashToken(token), label: validateLabel(body.label, "このブラウザ"), confirmed: false }
+      web
     };
     await this.saveSession(session);
     await this.scheduleAlarm(session, []);
@@ -237,7 +246,7 @@ export class PairingRoom extends DurableObject<Env> {
   private async revoke(body: Record<string, unknown>) {
     const session = await this.getSession();
     if (!session) return json({ error: "not_found" }, 404);
-    if (session.status !== "paired") return json({ error: "not_paired" }, 409);
+    if (session.status !== "paired" && session.status !== "revoked") return json({ error: "not_paired" }, 409);
     const receiver = await this.authorizeSessionReceiver(session, body);
     if (!receiver) return json({ error: "unauthorized" }, 401);
     session.status = "revoked";
@@ -369,6 +378,14 @@ export default {
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
     if (request.method === "OPTIONS") return new Response(null, { headers: corsHeaders(request) });
 
+    if (url.pathname.startsWith("/api/v2/")) {
+      if (request.method === "POST") {
+        const rate = await env.PAIR_DO.get(env.PAIR_DO.idFromName(`rate:v2:${request.headers.get("CF-Connecting-IP") ?? "unknown"}`)).fetch("https://pair.internal/rate", { method: "POST" });
+        if (!rate.ok) return withCors(json({ error: "rate_limited" }, 429), request);
+      }
+      return withCors(await peerApi(request, env), request);
+    }
+
     if (request.method === "GET" && url.pathname === "/api/v1/vapid-public-key") {
       return withCors(env.VAPID_PUBLIC_KEY ? json({ publicKey: env.VAPID_PUBLIC_KEY }) : json({ error: "push_unavailable" }, 503), request);
     }
@@ -394,20 +411,29 @@ export default {
     if (request.method === "POST" && url.pathname === "/api/v1/pairs") {
       const body = await request.json<Record<string, unknown>>().catch((): Record<string, unknown> => ({}));
       if (body.receiver === "extension") return withCors(json({ error: "extension_pairing_removed" }, 410), request);
+      const deviceToken=cookieValue(request,"qr_device");
+      const existingWeb=deviceToken ? await env.DB.prepare("SELECT id FROM receivers WHERE token_hash = ? AND kind = 'web' AND revoked_at IS NULL").bind(await hashToken(deviceToken)).first<{id:string}>() : null;
       for (let attempt = 0; attempt < 3; attempt += 1) {
         const code = createPairCode();
-        const response = await pairStub(env, code).fetch("https://pair.internal/create", jsonRequest({ ...body, code }));
+        const response = await pairStub(env, code).fetch("https://pair.internal/create", jsonRequest({ ...body, code, webReceiverId: existingWeb?.id, webToken: existingWeb ? deviceToken : undefined }));
         if (response.status !== 409) return withPairCookie(response, request, code);
       }
       return withCors(json({ error: "try_again" }, 503), request);
     }
 
-    const match = url.pathname.match(/^\/api\/v1\/pairs\/([A-Z0-9-]+)(?:\/(claim|confirm|revoke|status|events|ws|ack|push-subscriptions|connector-link|connector-status|connector-disconnect|connector-health|connector-events|connector-ws))?$/i);
+    const match = url.pathname.match(/^\/api\/v1\/pairs\/([A-Z0-9-]+)(?:\/(claim|confirm|revoke|status|events|ws|ack|push-subscriptions|connector-link|connector-status|connector-disconnect|connector-health|connector-events|connector-ws|device))?$/i);
     if (match) {
       const code = normalizePairCode(match[1]);
       if (!code) return withCors(json({ error: "invalid_code" }, 400), request);
       const action = match[2] ?? "status";
       const webToken = cookieValue(request, `qr_pair_${code}`);
+      if (action === "device" && request.method === "POST") {
+        if (request.headers.get("origin") && request.headers.get("origin") !== url.origin) return withCors(json({error:"forbidden"},403),request);
+        const membership = await webMembership(env, code, webToken);
+        if (!membership) return withCors(json({ error: "unauthorized" }, 401), request);
+        const receiver = await env.DB.prepare("SELECT id,kind,label FROM receivers WHERE id = ?").bind(membership.receiverId).first<{id:string;kind:string;label:string}>();
+        return receiver ? adoptWebDevice(request, webToken, receiver) : json({error:"unauthorized"},401);
+      }
       if (action === "push-subscriptions" && request.method === "POST") return withCors(await saveWebPushSubscription(request, env, code, webToken), request);
       if (action === "connector-link" && request.method === "POST") return withCors(await createConnectorLink(request, env, code, webToken), request);
       if (action === "connector-status" && request.method === "GET") return withCors(await connectorStatus(env, code, webToken), request);
@@ -655,17 +681,6 @@ function parsePushSubscription(value: unknown): PushSubscriptionInput | null {
 }
 
 function isExtensionId(value: string) { return /^[a-p]{32}$/.test(value); }
-
-async function revokePersistedPair(env: Env, code: string) {
-  const now = Date.now();
-  await env.DB.batch([
-    env.DB.prepare("UPDATE pairings SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL").bind(now, code),
-    env.DB.prepare("UPDATE connector_link_tokens SET used_at = ? WHERE pairing_id = ? AND used_at IS NULL").bind(now, code),
-    env.DB.prepare("UPDATE receiver_delivery_channels SET revoked_at = ? WHERE receiver_id = (SELECT web_receiver_id FROM pairings WHERE id = ?) AND revoked_at IS NULL").bind(now, code),
-    env.DB.prepare("UPDATE receiver_connectors SET revoked_at = ? WHERE receiver_id = (SELECT web_receiver_id FROM pairings WHERE id = ?) AND revoked_at IS NULL").bind(now, code),
-    env.DB.prepare("UPDATE receivers SET revoked_at = ? WHERE id = (SELECT web_receiver_id FROM pairings WHERE id = ?) AND revoked_at IS NULL").bind(now, code)
-  ]);
-}
 
 function pairStub(env: Env, code: string) { return env.PAIR_DO.get(env.PAIR_DO.idFromName(`pair:${code}`)); }
 function bearerToken(request: Request) { return request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? ""; }

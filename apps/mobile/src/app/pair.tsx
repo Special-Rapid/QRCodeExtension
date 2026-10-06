@@ -123,6 +123,8 @@ export default function PairScreen() {
       <Text style={styles.copy}>{t.pairBody}</Text>
     </View>
 
+    <Pressable accessibilityRole="button" onPress={() => router.push('/devices')} style={styles.primary}><Text style={styles.primaryText}>{t.peerDevicesTitle}</Text></Pressable>
+
     <View style={styles.card}>
       <View style={styles.cardHeading}><Text style={styles.label}>{t.thisPhone}</Text><Text style={styles.currentDeviceLabel}>{identity?.label ?? mobileDeviceLabel()}</Text></View>
       <View style={styles.cardHeading}><Text style={styles.label}>{t.pcDevicesKicker}</Text><Text style={styles.count}>{devices.length}</Text></View>

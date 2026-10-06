@@ -14,7 +14,7 @@ self.addEventListener("push", (event) => {
       // notification click, through the authenticated same-origin event endpoint.
       data: { inbox: "/", code, eventId }
     });
-    if (code && eventId) await queueAndDrainAck(code, eventId);
+    if (code && code !== "PEER" && eventId) await queueAndDrainAck(code, eventId);
   })());
 });
 
@@ -71,7 +71,7 @@ async function notificationTarget(data) {
   const eventId = typeof data?.eventId === "string" ? data.eventId : "";
   if (!/^[A-Z0-9-]{4,32}$/i.test(code) || !eventId) return { href: inbox, direct: false };
   try {
-    const response = await fetch(`/api/v1/pairs/${encodeURIComponent(code)}/events?event=${encodeURIComponent(eventId)}`, { credentials: "same-origin" });
+    const response = await fetch(code === "PEER" ? `/api/v2/events` : `/api/v1/pairs/${encodeURIComponent(code)}/events?event=${encodeURIComponent(eventId)}`, { credentials: "same-origin" });
     if (!response.ok) return { href: inbox, direct: false };
     const body = await response.json();
     const event = Array.isArray(body?.events) ? body.events.find((item) => item?.id === eventId) : null;

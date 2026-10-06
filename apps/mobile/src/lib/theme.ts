@@ -140,7 +140,7 @@ const dark: Palette = {
   pairInputBg: '#0B2149',
   pairPhrase: '#FFFFFF',
   pairStatus: '#C7D6EF',
-  pairPrimaryBg: '#2476F3',
+  pairPrimaryBg: '#1463F3',
   pairSecondaryBorder: '#79AEFF',
   pairSecondaryText: '#AFCBFF',
   pairDeviceBorder: '#284A7C',

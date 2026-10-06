@@ -63,6 +63,9 @@ export async function getPairStatus(credential: PairCredential) {
 }
 
 export async function sendHandoff(data: string): Promise<HandoffReceipt> {
+  const { selectedPeerTargets, sendPeerScan } = await import('./peers');
+  const targets = await selectedPeerTargets();
+  if (targets !== null) return sendPeerScan(data, targets);
   const identity = await loadMobileIdentity();
   if (!identity) throw apiError('not_paired');
   try {
@@ -78,6 +81,7 @@ export async function sendHandoff(data: string): Promise<HandoffReceipt> {
 }
 
 export async function getHandoffReceipt(handoffs: HandoffTarget[]): Promise<HandoffReceipt> {
+  if (handoffs.every(item => item.code.startsWith("peer:"))) return (await import("./peers")).peerRequest("handoffs/status", { handoffs });
   const identity = await loadMobileIdentity();
   if (!identity) throw apiError('not_paired');
   return request('/api/v1/handoffs/status', {
@@ -136,7 +140,7 @@ export function clearMobileIdentity() {
   return SecureStore.deleteItemAsync(MOBILE_IDENTITY_KEY);
 }
 
-async function saveMobileIdentity(identity: MobileIdentity) {
+export async function saveMobileIdentity(identity: MobileIdentity) {
   await SecureStore.setItemAsync(MOBILE_IDENTITY_KEY, JSON.stringify(identity));
 }
 
