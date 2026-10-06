@@ -25,7 +25,7 @@ nav { display:grid; gap:5px; }
 .setup-progress { display:flex; align-items:center; width:min(100%,400px); margin:0; }
 .progress-labels { display:grid; grid-template-columns:repeat(4,1fr); width:min(100%,400px); margin:8px 0 48px; color:var(--ink-soft); font-size:10px; font-weight:700; text-align:center; }
 .progress-step { display:grid; flex:0 0 auto; width:28px; height:28px; place-items:center; border:1px solid var(--line-strong); border-radius:50%; background:var(--surface); color:var(--ink-soft); font-size:12px; font-weight:800; }
-.progress-step.is-current,.progress-step.is-complete { border-color:var(--blue); background:var(--blue); color:#fff; }
+.progress-step.is-current,.progress-step.is-complete { border-color:var(--blue); background:var(--blue); color:var(--on-primary); }
 .progress-line { height:1px; flex:1; background:var(--line-strong); }
 .progress-line.is-complete { background:var(--blue); }
 .setup-card,.pairing-card { margin-top:36px; padding:32px; border:1px solid var(--line-strong); border-radius:18px; background:var(--surface); box-shadow:0 18px 44px rgba(17,59,117,.06); }
@@ -35,7 +35,7 @@ nav { display:grid; gap:5px; }
 .setup-card p:not(.card-kicker),.pairing-card p:not(.card-kicker),.detail-panel p { margin:10px 0 0; color:var(--ink-soft); font-size:14px; line-height:1.65; }
 .setup-card .primary-button { margin-top:27px; }
 .primary-button,.quiet-button,.text-button,.choice-button { min-height:46px; border-radius:10px; cursor:pointer; font-size:14px; font-weight:800; }
-.primary-button { border:1px solid var(--blue); padding:0 19px; background:var(--blue); box-shadow:0 8px 18px rgba(20,99,243,.18); color:#fff; }
+.primary-button { border:1px solid var(--blue); padding:0 19px; background:var(--blue); box-shadow:0 8px 18px rgba(20,99,243,.18); color:var(--on-primary); }
 .primary-button:hover { border-color:var(--blue-strong); background:var(--blue-strong); }
 .primary-button:disabled { cursor:not-allowed; opacity:.45; box-shadow:none; }
 .quiet-button { border:1px solid var(--line-strong); padding:0 15px; background:var(--surface); color:var(--blue); }
@@ -78,9 +78,26 @@ nav { display:grid; gap:5px; }
 .settings-panel { padding:25px; }
 .choice-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:18px; }
 .choice-button { border:1px solid var(--line-strong); padding:0 14px; background:var(--surface); color:var(--ink-soft); }
-.choice-button.is-selected { border-color:var(--blue); background:var(--blue); color:#fff; }
+.choice-button.is-selected { border-color:var(--blue); background:var(--blue); color:var(--on-primary); }
 .settings-panel .quiet-button { margin-top:18px; }
 .danger-panel { border-color:color-mix(in srgb,var(--danger) 42%,var(--line)); }
 .danger-button { margin-top:18px; color:var(--danger); }
 @media (max-width:1080px) { .app-shell { display:block; } .rail { gap:16px; padding:18px clamp(16px,4vw,32px); border-right:0; border-bottom:1px solid var(--line); } .brand { padding:0 4px; } nav { display:flex; flex-wrap:wrap; } .nav-item { flex:1 1 92px; text-align:center; } .rail-note { display:none; } .main-content { padding:42px clamp(20px,6vw,64px) 64px; } }
 @media (max-width:620px) { .main-content { padding:34px 20px 60px; } .setup-progress { margin-bottom:34px; } .setup-card,.pairing-card { padding:23px; } .page-heading { display:block; } .notification-controls { justify-items:start; margin-top:22px; } .notification-controls p { text-align:left; } .event { display:block; } .event-actions { margin-top:18px; } .event-actions > * { flex:1; } .device-grid { grid-template-columns:1fr; margin-top:30px; } .settings-stack { margin-top:30px; } }
+
+.scanner-panel video { display: block; width: 100%; max-height: 55vh; object-fit: contain; border-radius: 16px; background: var(--camera-canvas); }
+.scanner-panel video[hidden] { display: none; }
+.scanner-panel input[type=file] { max-width: 100%; margin-top: 12px; }
+.scanner-panel label { cursor: pointer; }
+.scanner-panel .event-value { user-select: text; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+:root { --camera-canvas: #000; }
+.scanner-panel .detail-actions { flex-wrap: wrap; }
+.scanner-panel input[type=file] { width: 100%; min-width: 0; min-height: 46px; }
+
+:root { --on-primary: #fff; }
+:root[data-theme="dark"] { --on-primary: #071327; }
+.scanner-panel .event { min-width: 0; }
+.scanner-panel .event-actions { flex-wrap: wrap; min-width: 0; }
+.scanner-panel .event-actions button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.scanner-panel .detail-actions button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }

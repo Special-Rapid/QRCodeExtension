@@ -1,9 +1,12 @@
+import { createScanner } from "/scanner.js";
 import { notificationPermissionState } from "/notification-state.js";
 
 const key = "qr-scan-web-receiver";
 const preferencesKey = "qr-scan-web-receiver-preferences";
 const messages = {
   ja: {
+    scanCopyPending: "コピーしています…",
+    navScan: "読み取る", scanTitle: "QRコードを読み取る", scanPrivacy: "画像と映像はこの端末内で読み取ります。結果は自動送信しません。", scanPreview: "カメラプレビュー", scanStart: "カメラで読み取る", scanStop: "停止", scanImage: "画像を選ぶ", scanPending: "カメラの許可を待っています…", scanReading: "読み取り中…", scanImagePending: "画像を読み取っています…", scanFound: "読み取りました。次のコードはカメラを再開するか画像を選んでください。", scanEmpty: "QRコードが見つかりません。コード全体が写った画像を選んでください。", scanDenied: "カメラが許可されませんでした。ブラウザ設定で許可するか画像を選んでください。", scanUnavailable: "カメラを使用できません。画像を選んで読み取れます。", scanFailure: "読み取れませんでした。別の画像またはカメラで試してください。", scanStopped: "読み取りを停止しました。", scanCopyFailed: "コピーできませんでした。結果の文字列を選択してコピーしてください。", scanImageSize: "20MB以下の画像を選んでください。",
     navInbox: "受信箱", navDevices: "デバイス", navSettings: "設定", navMenu: "メインメニュー", railNote: "スマホで読み取った内容を、このPCで安全に開けます。", progressLabel: "セットアップの進行状況", notificationForeground: "スマホから新しい読み取り結果が届きました。",
     setupEyebrow: "PCを準備する", setupTitle: "このPCをセットアップ", setupBody: "スマホで読み取ったリンクや文字列を、このPCで受け取れます。", setupCardKicker: "最初のステップ", setupCardTitle: "スマホを連携する", setupCardBody: "PCに表示するコードをスマホアプリへ入力し、両方の画面で確認します。", setupStart: "スマホを連携する", stepPrepare: "PCを準備", stepCode: "コード入力", stepConfirm: "両方で確認", stepReady: "受信開始",
     pairCodeEyebrow: "スマホで入力するコード", pairCodeKicker: "スマホで入力してください", pairCodeTitle: "スマホアプリを開いてコードを入力", pairCodeBody: "入力後、この画面に確認フレーズが表示されます。", pairPhraseLabel: "確認フレーズ", pairConfirm: "このPCで確認する", pairRestart: "別のコードを作る", pairWaiting: "スマホアプリでコードを入力してください。", pairClaimed: "がコードを入力しました。確認フレーズを見比べてから確認してください。", pairComplete: "連携が完了しました。", pairExpired: "連携コードの有効期限が切れました。もう一度作成してください。", pairRevoked: "この連携は解除されました。もう一度連携してください。", pairExpiry: "残り {{time}}",
@@ -13,6 +16,8 @@ const messages = {
     genericError: "通信に失敗しました。", rateLimited: "試行回数が多すぎます。少し待ってから試してください。", expired: "連携コードの有効期限が切れました。", unauthorized: "連携情報を確認できませんでした。", alreadyClaimed: "このコードは別のスマホで入力済みです。", invalidSubscription: "このブラウザでは通知を登録できませんでした。", linkExpired: "Chrome拡張の接続時間が切れました。もう一度試してください。", connectorFailure: "Chrome拡張を接続できませんでした。拡張を再読み込みしてから、もう一度接続してください。"
   },
   en: {
+    scanCopyPending: "Copying…",
+    navScan: "Scan", scanTitle: "Scan a QR code", scanPrivacy: "Images and video are decoded on this device. Results are not sent automatically.", scanPreview: "Camera preview", scanStart: "Scan with camera", scanStop: "Stop", scanImage: "Choose image", scanPending: "Waiting for camera permission…", scanReading: "Scanning…", scanImagePending: "Reading image…", scanFound: "Decoded. Restart the camera or choose an image for the next code.", scanEmpty: "No QR code found. Choose an image showing the whole code.", scanDenied: "Camera permission was denied. Allow it in browser settings or choose an image.", scanUnavailable: "Camera unavailable. Choose an image to scan instead.", scanFailure: "Could not decode. Try another image or the camera.", scanStopped: "Scanning stopped.", scanCopyFailed: "Could not copy. Select the result text and copy it.", scanImageSize: "Choose an image no larger than 20 MB.",
     navInbox: "Inbox", navDevices: "Devices", navSettings: "Settings", navMenu: "Main menu", railNote: "Open content scanned on your phone safely on this PC.", progressLabel: "Setup progress", notificationForeground: "A new scan result arrived from your phone.",
     setupEyebrow: "Prepare this PC", setupTitle: "Set up this PC", setupBody: "Receive links and text scanned on your phone here.", setupCardKicker: "First step", setupCardTitle: "Link your phone", setupCardBody: "Enter the code shown here in the phone app, then confirm it on both screens.", setupStart: "Link your phone", stepPrepare: "Prepare PC", stepCode: "Enter code", stepConfirm: "Confirm both", stepReady: "Start receiving",
     pairCodeEyebrow: "Enter this code on your phone", pairCodeKicker: "Use the phone app", pairCodeTitle: "Open the app and enter the code", pairCodeBody: "A confirmation phrase appears here after the code is entered.", pairPhraseLabel: "Confirmation phrase", pairConfirm: "Confirm on this PC", pairRestart: "Create another code", pairWaiting: "Enter the code in the phone app.", pairClaimed: " entered the code. Compare the confirmation phrase before confirming.", pairComplete: "Linking is complete.", pairExpired: "The link code expired. Create a new one.", pairRevoked: "This link was removed. Link again.", pairExpiry: "{{time}} remaining",
@@ -46,10 +51,12 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () 
 window.addEventListener("message", receiveExtensionBridge);
 window.postMessage({ source: "qr-scan-web", type: "page-ready" }, location.origin);
 
+const scanner = createScanner({ t });
 applyPreferences();
 if (state.credential) resumePairing(); else renderUnpaired();
 
 function showView(name) {
+  if (name !== "scan") scanner.stop();
   state.activeView = name;
   document.querySelectorAll(".view").forEach((view) => { view.hidden = view.id !== `${name}-view`; });
   document.querySelectorAll(".nav-item").forEach((button) => {
@@ -81,6 +88,8 @@ function applyPreferences() {
   if (state.credential?.status === "paired") { renderInbox(); renderConnector(); } else if (state.credential) renderPairing(); else renderUnpaired();
   renderNotificationControls();
   state.events.forEach((event) => refreshEventCopy(event));
+  scanner.refresh();
+  document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.documentElement).getPropertyValue("--canvas").trim();
 }
 
 function updatePreferences(next) {
