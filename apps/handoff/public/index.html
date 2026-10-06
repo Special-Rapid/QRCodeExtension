@@ -27,6 +27,7 @@
 
       <main class="main-content">
         <section class="view" id="inbox-view" aria-labelledby="inbox-title">
+          <section id="peer-inbox-panel" class="detail-panel" hidden><h2 data-i18n="peerReceived">端末からの受信</h2><ol id="peer-event-list" class="event-list"></ol><p id="peer-inbox-status" role="status" aria-live="polite"></p><button id="peer-notifications" class="quiet-button" type="button" data-i18n="notificationEnable">Web通知を有効にする</button><p id="peer-notification-status" role="status" aria-live="polite"></p></section>
           <section id="unpaired-panel" class="setup-panel" aria-labelledby="setup-title">
             <div class="setup-progress" data-i18n-aria="progressLabel" aria-label="セットアップの進行状況">
               <span class="progress-step is-current">1</span><span class="progress-line"></span><span class="progress-step">2</span><span class="progress-line"></span><span class="progress-step">3</span><span class="progress-line"></span><span class="progress-step">4</span>
@@ -93,13 +94,22 @@
             <video id="scan-video" autoplay muted playsinline hidden data-i18n-aria="scanPreview" aria-label="カメラプレビュー"></video>
             <div class="detail-actions"><button id="scan-start" class="primary-button" type="button" data-i18n="scanStart">カメラで読み取る</button><button id="scan-stop" class="quiet-button" type="button" hidden data-i18n="scanStop">停止</button><input id="scan-image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-i18n-aria="scanImage" aria-label="画像を選ぶ"></div>
             <p id="scan-status" class="inline-status" role="status" aria-live="polite"></p>
+            <label for="peer-result" data-i18n="peerResultLabel">送信する結果</label><select id="peer-result"></select><fieldset id="peer-targets"><legend data-i18n="peerTargets">送信先</legend><div id="peer-target-options"></div></fieldset><button id="peer-send" class="primary-button" type="button" disabled data-i18n="peerSend">選んだ端末へ送信</button><p id="peer-send-status" role="status" aria-live="polite"></p>
             <ol id="scan-results" class="event-list"></ol>
           </div>
         </section>
 
         <section class="view" id="devices-view" hidden aria-labelledby="devices-title">
           <div class="page-heading"><div><p class="eyebrow" data-i18n="devicesEyebrow">連携先</p><h1 id="devices-title" data-i18n="devicesTitle">デバイス</h1><p data-i18n="devicesBody">このPCに接続している端末と高速通知を管理します。</p></div></div>
-          <div class="device-grid">
+          <section class="detail-panel" id="peer-panel">
+            <h2 data-i18n="peerTitle">連携した端末</h2>
+            <ul id="peer-devices" class="peer-devices"></ul>
+            <div class="detail-actions"><button id="peer-add" class="primary-button" type="button" data-i18n="peerAdd">端末を追加</button><button id="peer-refresh" class="quiet-button" type="button" data-i18n="peerRefresh">更新</button></div>
+            <form id="peer-claim-form"><label for="peer-code-input" data-i18n="peerCodeLabel">別の端末のコード</label><input id="peer-code-input" maxlength="9" autocomplete="off" autocapitalize="characters"><button id="peer-claim" class="quiet-button" type="submit" data-i18n="peerClaim">コードを入力</button></form>
+            <div id="peer-confirmation" hidden><strong id="peer-code"></strong><p id="peer-phrase"></p><p id="peer-counterparty"></p><button id="peer-confirm" class="primary-button" type="button" data-i18n="peerConfirm">フレーズを確認して連携</button></div>
+            <p id="peer-status" role="status" aria-live="polite"></p>
+          </section>
+          <div class="device-grid" hidden>
             <section class="detail-panel device-panel"><p class="card-kicker" data-i18n="thisPcLabel">このPC</p><h2 id="this-pc-name">このブラウザ</h2><p id="connection-state-detail" class="status-badge">未接続</p></section>
             <section class="detail-panel device-panel"><p class="card-kicker" data-i18n="connectedDevices">接続中のデバイス</p><h2 id="device-count">0台</h2><p id="device-details">連携すると、ここにスマホの名前が表示されます。</p></section>
           </div>

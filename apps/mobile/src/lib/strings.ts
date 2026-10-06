@@ -1,6 +1,7 @@
 import type { LocalePreference, ResolvedLocale } from './preferences';
 
 export type StringKey =
+  'peerLoaded' | 'peerRemoved' | 'peerAutoSend' | 'peerDevicesTitle' | 'peerDevicesBody' | 'peerAdd' | 'peerClaim' | 'peerConfirm' | 'peerPending' | 'peerReady' | 'peerWaiting' | 'peerTargets' | 'peerIncoming' | 'peerForeground' | 'peerRefresh' | 'peerEmpty' | 'peerSelected' | 'peerUnselected' | 'peerFailed' | 'peerSaved' | 'peerCopy' | 'peerCopied' | 'peerOpen' | 'peerCode' | 'peerRemove' | 'peerRemoveConfirm'
   | 'appName'
   | 'system'
   | 'light'
@@ -103,6 +104,32 @@ export type StringKey =
 
 const messages: Record<ResolvedLocale, Record<StringKey, string>> = {
   ja: {
+    peerLoaded: "端末一覧を更新しました。",
+    peerRemoved: "この端末との連携を解除しました。",
+    peerAutoSend: "次の読み取り結果は、選択した端末へ自動で送信します。送信先をすべて外すと送信を停止します。",
+    peerDevicesTitle: "端末連携",
+    peerDevicesBody: "直接連携した端末を管理し、読み取り結果の送信先を選びます。",
+    peerAdd: "追加用コードを表示",
+    peerClaim: "コードを入力",
+    peerConfirm: "名前とフレーズを確認して連携",
+    peerPending: "処理しています…",
+    peerReady: "連携しました。送信先を選んでください。",
+    peerWaiting: "両方の画面で確認してください。コードは5分で失効します。",
+    peerTargets: "読み取り結果の送信先",
+    peerIncoming: "端末からの受信",
+    peerForeground: "アプリを開いている間に受信します。背景通知には対応していません。",
+    peerRefresh: "更新",
+    peerEmpty: "連携した端末はありません。",
+    peerSelected: "送信する",
+    peerUnselected: "送信しない",
+    peerFailed: "完了できませんでした。接続とコードの期限を確認してください。",
+    peerSaved: "送信先を保存しました。",
+    peerCopy: "コピー",
+    peerCopied: "コピーしました",
+    peerOpen: "開く",
+    peerCode: "連携コード",
+    peerRemove: "解除",
+    peerRemoveConfirm: "この端末との連携を解除しますか？",
     appName: 'QR Scan',
     system: 'システム',
     light: 'ライト',
@@ -236,6 +263,32 @@ const messages: Record<ResolvedLocale, Record<StringKey, string>> = {
     screenCaptureUnavailable: '画面を読み取れませんでした。もう一度試してください。',
   },
   en: {
+    peerLoaded: "Device list refreshed.",
+    peerRemoved: "Device disconnected.",
+    peerAutoSend: "Your next scan is automatically sent to the selected devices. Deselect all devices to stop sending.",
+    peerDevicesTitle: "Device links",
+    peerDevicesBody: "Manage directly linked devices and choose destinations for scans.",
+    peerAdd: "Show an add code",
+    peerClaim: "Enter code",
+    peerConfirm: "Confirm names and phrase to link",
+    peerPending: "Working…",
+    peerReady: "Linked. Select destinations.",
+    peerWaiting: "Confirm on both screens. The code expires after five minutes.",
+    peerTargets: "Scan destinations",
+    peerIncoming: "Received from devices",
+    peerForeground: "Receiving works while the app is open. Background notifications are not supported.",
+    peerRefresh: "Refresh",
+    peerEmpty: "No linked devices.",
+    peerSelected: "Send",
+    peerUnselected: "Do not send",
+    peerFailed: "Could not finish. Check your connection and code expiry.",
+    peerSaved: "Destinations saved.",
+    peerCopy: "Copy",
+    peerCopied: "Copied",
+    peerOpen: "Open",
+    peerCode: "Link code",
+    peerRemove: "Disconnect",
+    peerRemoveConfirm: "Disconnect this device?",
     appName: 'QR Scan',
     system: 'System',
     light: 'Light',

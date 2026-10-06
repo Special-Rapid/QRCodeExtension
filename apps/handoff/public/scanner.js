@@ -1,7 +1,7 @@
 import { decodeImageData, decodeImageSource, toSafeHttpUrl } from './scan-decoder.js';
 
 // A generation cancels permission, image and frame work after stop/navigation.
-export function createScanner({ t, media = navigator.mediaDevices, decodeFrame = decodeImageData, decodeImage = decodeImageSource } = {}) {
+export function createScanner({ t, media = navigator.mediaDevices, decodeFrame = decodeImageData, decodeImage = decodeImageSource, onResults = () => {} } = {}) {
   const get = (id) => document.getElementById(id);
   const video = get('scan-video');
   let stream = null, generation = 0, timer = null, phase = '', busy = false;
@@ -40,7 +40,7 @@ export function createScanner({ t, media = navigator.mediaDevices, decodeFrame =
   }
   function found(values) {
     results = [...new Set(values.map((value) => value.data).filter((data) => typeof data === 'string' && data.length && data.length <= 4096))];
-    renderResults(); status(results.length ? 'scanFound' : 'scanEmpty');
+    renderResults(); onResults(); status(results.length ? 'scanFound' : 'scanEmpty');
   }
   async function start() {
     if (busy) return;

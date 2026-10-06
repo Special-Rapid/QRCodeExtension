@@ -101,3 +101,17 @@ nav { display:grid; gap:5px; }
 .scanner-panel .event-actions { flex-wrap: wrap; min-width: 0; }
 .scanner-panel .event-actions button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .scanner-panel .detail-actions button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+
+.peer-devices { list-style:none; padding:0; }
+.peer-devices li { display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; padding:14px 0; border-bottom:1px solid var(--line); overflow-wrap:anywhere; }
+#peer-panel .detail-actions { flex-wrap:wrap; }
+#peer-claim-form { display:flex; flex-wrap:wrap; gap:12px; margin-top:24px; }
+#peer-claim-form label { width:100%; }
+#peer-code-input { min-height:46px; max-width:100%; min-width:0; color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:8px; }
+#peer-targets { border:1px solid var(--line); border-radius:12px; margin:18px 0; min-width:0; }
+#peer-target-options label { display:flex; gap:10px; align-items:center; min-height:46px; overflow-wrap:anywhere; }
+#peer-target-options input { flex:0 0 auto; }
+#peer-confirmation { margin-top:20px; overflow-wrap:anywhere; }
+#peer-event-list .event-actions { flex-wrap:wrap; }
+
+#peer-result { display:block; min-height:46px; width:100%; max-width:100%; min-width:0; color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:8px; }
