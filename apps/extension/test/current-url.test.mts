@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { currentWebUrlFromTab } from "../src/current-url.js";
+import { currentWebUrlFromTab } from "../src/current-url.ts";
 
 test("returns the active normal Web URL as a stable QR payload", () => {
   assert.equal(

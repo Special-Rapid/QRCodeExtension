@@ -23,7 +23,7 @@ QRコードをカメラなしで読み取るChrome拡張と、スマホで読ん
 
 | パス | 内容 |
 | --- | --- |
-| `apps/extension/` | Manifest V3 Chrome拡張。カメラを使わないQRスキャンと任意の受信箱コネクタ。 |
+| [apps/extension/](apps/extension/README.md) | Manifest V3 Chrome拡張。カメラを使わないQRスキャンと任意の受信箱コネクタ。 |
 | `apps/mobile/` | ExpoベースのiOS／Androidスキャナー。 |
 | `apps/handoff/` | `qr.snkisk.com`向けのCloudflare Worker、D1、Durable Object、PCのWeb受信箱。 |
 

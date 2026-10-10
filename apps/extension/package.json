@@ -6,16 +6,19 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node --test test/**/*.test.mjs",
-    "check": "npm run build && npm test",
-    "pretest": "node ../../tooling/prepare-build-assets.mjs"
+    "test": "node --test test/*.test.mjs test/*.test.mts",
+    "check": "npm run typecheck && npm run build && npm test",
+    "pretest": "node ../../tooling/prepare-build-assets.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "jsqr": "^1.4.0",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
+    "@types/node": "22.20.5",
     "esbuild": "^0.25.0",
-    "pngjs": "^7.0.0"
+    "pngjs": "^7.0.0",
+    "typescript": "5.9.3"
   }
 }

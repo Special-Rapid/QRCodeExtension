@@ -3,7 +3,7 @@ import test from "node:test";
 import QRCode from "qrcode";
 import { PNG } from "pngjs";
 import { decodeImageData } from "../src/qr-decoder.js";
-import { toSafeHttpUrl } from "../src/safe-url.js";
+import { toSafeHttpUrl } from "../src/safe-url.ts";
 
 async function rasterize(value) {
   const dataUrl = await QRCode.toDataURL(value, { errorCorrectionLevel: "H", margin: 2, width: 300 });
