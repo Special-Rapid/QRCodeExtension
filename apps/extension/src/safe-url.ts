@@ -1,6 +1,6 @@
 const BARE_WEB_URL = /^(?:[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?\.)+[a-z](?:[a-z\d-]{0,61}[a-z\d])?(?::\d{1,5})?(?:\/[^\s<>"'`]*)?$/iu;
 
-export function toSafeHttpUrl(value) {
+export function toSafeHttpUrl(value: unknown): URL | null {
   if (typeof value !== "string") return null;
   const candidate = value.trim();
   if (!candidate) return null;

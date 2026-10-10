@@ -1,7 +1,7 @@
 import QRCode from "qrcode/lib/browser.js";
-import { currentWebUrlFromTab } from "./current-url.js";
+import { currentWebUrlFromTab } from "./current-url.ts";
 import { decodeImageSource } from "./qr-decoder.js";
-import { toSafeHttpUrl } from "./safe-url.js";
+import { toSafeHttpUrl } from "./safe-url.ts";
 
 const PREFERENCES_KEY = "popup_preferences";
 const DEFAULT_PREFERENCES = { theme: "system", language: systemLanguage() };

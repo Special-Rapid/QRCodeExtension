@@ -1,4 +1,4 @@
-import { toSafeHttpUrl } from "./safe-url.js";
+import { toSafeHttpUrl } from "./safe-url.ts";
 
 export const HANDOFF_ORIGIN = "https://qr.snkisk.com";
 

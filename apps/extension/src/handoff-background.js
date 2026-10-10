@@ -1,4 +1,4 @@
-import { toSafeHttpUrl } from "./safe-url.js";
+import { toSafeHttpUrl } from "./safe-url.ts";
 
 const CONNECTOR_KEY = "qr-scan-connector";
 const PENDING_ACKS_KEY = "qr-scan-pending-acks";
