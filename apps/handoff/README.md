@@ -34,3 +34,15 @@ npm run deploy:production
 `qr.snkisk.com`には既存DNSレコードがあるため、このリポジトリはCustom Domainをまだ設定しません。最初のデプロイ後に現在のDNSの用途を確認してから接続します。
 
 開いたWeb受信箱にはDurable Object WebSocketで新着が届きます。タブを閉じた状態でも届くWeb Pushは、VAPID鍵をCloudflare secretとして登録してから追加します。秘密鍵やトークンはGitへ入れません。
+
+## WebのQR読み取り
+
+[Issue #6](https://github.com/Special-Rapid/QRCodeExtension/issues/6)の「読み取る」画面は連携なしでも使えます。カメラはHTTPS/localhostとブラウザ許可が必要で、非対応・拒否・カメラなしの場合は画像選択を使います。映像・画像を送信せず、結果はコピーまたはHTTP(S)リンクを明示して開きます。結果後は停止し、次の読取を再開します。離脱・非表示・停止中に解決した権限要求の映像も解放します。
+
+`public/scan-decoder.js`は拡張と同じjsQRデコーダーを同梱した生成済みコードです。rootの依存を用意して`node apps/handoff/scripts/build-scanner.mjs`で再生成します。実カメラ、Safari/Firefoxの実機は未検証です。
+
+表示言語は日本語/英語、未保存時はOS localeのexact/base一致、それ以外は日本語です。手動言語・System/Light/DarkはlocalStorageに保存し、画面遷移やreloadなしで切り替えます。SystemはOSのappearance変更に追従し、色は共有semantic token、browser theme-colorは解決したcanvas色を使います。Webに標準のOS accent-color取得APIはないため非適用です。RTL localeは現在サポートしていません。
+
+映像領域の`--camera-canvas`は映像未到着時の黒背景を定義する共通tokenです。
+
+同梱jsQRの著作権・Apache-2.0本文は`public/jsqr-LICENSE.txt`に保持し、再生成時にコピーします。
