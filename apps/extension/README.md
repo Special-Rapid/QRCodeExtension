@@ -4,7 +4,7 @@
 
 ## TypeScriptへの段階移行
 
-URL検証と現在タブURL取得の編集元は `src/safe-url.ts` と `src/current-url.ts` です。`npm run typecheck` でこの段階のTypeScript source・テストを厳格に検査し、`npm run check` でbundleと回帰テストも確認します。Node.js 22.18以降で実行してください。
+URL検証と現在タブURL取得の編集元は `src/safe-url.ts` と `src/current-url.ts` です。画像読み取りの編集元 `src/qr-decoder.ts` も、pixel入力・領域・検出座標・結果をstrict型検査へ含めます。新規canvasの2D contextを使う既存の前提は型注釈でも維持し、runtimeの失敗処理を変更しません。`npm run typecheck` でこの段階のTypeScript source・テストを厳格に検査し、`npm run check` でbundleと回帰テストも確認します。Node.js 22.18以降で実行してください。
 
 Chromeへ配布するJavaScriptは既存esbuildから生成する `dist/` 内の成果物です。生成元を編集し、配布物を直接編集しないでください。他のJavaScript source/scripts/testsは親Issue #15の後続段階で移行し、移行完了済みとは扱いません。
 

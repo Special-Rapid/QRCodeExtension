@@ -1,6 +1,6 @@
 import QRCode from "qrcode/lib/browser.js";
 import { currentWebUrlFromTab } from "./current-url.ts";
-import { decodeImageSource } from "./qr-decoder.js";
+import { decodeImageSource } from "./qr-decoder.ts";
 import { toSafeHttpUrl } from "./safe-url.ts";
 
 const PREFERENCES_KEY = "popup_preferences";
