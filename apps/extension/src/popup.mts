@@ -1,10 +1,17 @@
 import QRCode from "qrcode/lib/browser.js";
 import { currentWebUrlFromTab } from "./current-url.ts";
-import { decodeImageSource } from "./qr-decoder.ts";
+import { decodeImageSource, type DecodedQr } from "./qr-decoder.ts";
 import { toSafeHttpUrl } from "./safe-url.ts";
 
+type Theme = "system" | "light" | "dark";
+type Language = "ja" | "en";
+type Preferences = { theme: Theme; language: Language };
+type CopyKey = keyof typeof COPY.ja;
+type StatusTone = "" | "success" | "error";
+type Substitutions = Record<string, string | number>;
+
 const PREFERENCES_KEY = "popup_preferences";
-const DEFAULT_PREFERENCES = { theme: "system", language: systemLanguage() };
+const DEFAULT_PREFERENCES: Preferences = { theme: "system", language: systemLanguage() };
 const QR_CANVAS_COLORS = { dark: "#071b41", light: "#ffffff" };
 
 const COPY = {
@@ -24,42 +31,42 @@ const COPY = {
   }
 };
 
-const scanPageButton = document.querySelector("#scan-page");
-const scanButtonContent = document.querySelector(".button-content");
-const scanLoading = document.querySelector("#scan-loading");
-const fileInput = document.querySelector("#image-file");
-const status = document.querySelector("#status");
-const results = document.querySelector("#results");
-const resultList = document.querySelector("#result-list");
-const currentUrlQrFrame = document.querySelector("#current-url-qr-frame");
-const currentUrlQr = document.querySelector("#current-url-qr");
-const currentUrlLoading = document.querySelector("#current-url-loading");
-const currentUrlUnavailable = document.querySelector("#current-url-unavailable");
-const currentUrlValue = document.querySelector("#current-url-value");
-const currentUrlStatus = document.querySelector("#current-url-status");
-const copyCurrentUrlButton = document.querySelector("#copy-current-url");
-const downloadCurrentUrlSvgButton = document.querySelector("#download-current-url-svg");
-const downloadCurrentUrlPngButton = document.querySelector("#download-current-url-png");
+const scanPageButton = document.querySelector<HTMLButtonElement>("#scan-page")!;
+const scanButtonContent = document.querySelector<HTMLElement>(".button-content")!;
+const scanLoading = document.querySelector<HTMLElement>("#scan-loading")!;
+const fileInput = document.querySelector<HTMLInputElement>("#image-file")!;
+const status = document.querySelector<HTMLElement>("#status")!;
+const results = document.querySelector<HTMLElement>("#results")!;
+const resultList = document.querySelector<HTMLOListElement>("#result-list")!;
+const currentUrlQrFrame = document.querySelector<HTMLElement>("#current-url-qr-frame")!;
+const currentUrlQr = document.querySelector<HTMLCanvasElement>("#current-url-qr")!;
+const currentUrlLoading = document.querySelector<HTMLElement>("#current-url-loading")!;
+const currentUrlUnavailable = document.querySelector<HTMLElement>("#current-url-unavailable")!;
+const currentUrlValue = document.querySelector<HTMLElement>("#current-url-value")!;
+const currentUrlStatus = document.querySelector<HTMLElement>("#current-url-status")!;
+const copyCurrentUrlButton = document.querySelector<HTMLButtonElement>("#copy-current-url")!;
+const downloadCurrentUrlSvgButton = document.querySelector<HTMLButtonElement>("#download-current-url-svg")!;
+const downloadCurrentUrlPngButton = document.querySelector<HTMLButtonElement>("#download-current-url-png")!;
 const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-const preferenceButtons = [...document.querySelectorAll("[data-preference]")];
+const preferenceButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-preference]")];
 const systemTheme = globalThis.matchMedia?.("(prefers-color-scheme: dark)") ?? null;
 
-let preferences = { ...DEFAULT_PREFERENCES };
-let currentUrlStatusKey = "currentUrlLoading";
-let currentUrlStatusTone = "";
-let currentUrlUnavailableKey = "qrTooLarge";
-let currentUrl = null;
-let scanStatusKey = "scanInitial";
-let scanStatusTone = "";
-let scanStatusValues = {};
-let decodedResults = null;
+let preferences: Preferences = { ...DEFAULT_PREFERENCES };
+let currentUrlStatusKey: CopyKey = "currentUrlLoading";
+let currentUrlStatusTone: StatusTone = "";
+let currentUrlUnavailableKey: CopyKey = "qrTooLarge";
+let currentUrl: string | null = null;
+let scanStatusKey: CopyKey = "scanInitial";
+let scanStatusTone: StatusTone = "";
+let scanStatusValues: Substitutions = {};
+let decodedResults: DecodedQr[] | null = null;
 
 scanPageButton.addEventListener("click", scanVisiblePage);
 fileInput.addEventListener("change", scanSelectedImage);
 copyCurrentUrlButton.addEventListener("click", copyCurrentUrl);
 downloadCurrentUrlSvgButton.addEventListener("click", () => downloadCurrentUrlQr("svg"));
 downloadCurrentUrlPngButton.addEventListener("click", () => downloadCurrentUrlQr("png"));
-preferenceButtons.forEach((button) => button.addEventListener("click", () => updatePreference(button.dataset.preference, button.dataset.value)));
+preferenceButtons.forEach((button) => button.addEventListener("click", () => updatePreference(button.dataset.preference!, button.dataset.value)));
 systemTheme?.addEventListener?.("change", () => {
   if (preferences.theme === "system") applyPreferences();
 });
@@ -80,14 +87,15 @@ async function loadPreferences() {
   }
 }
 
-function normalizePreferences(value) {
+function normalizePreferences(value: unknown): Preferences {
+  // 型の投影はoptional property access用。membership判定後だけTheme/Languageへ絞る。
   return {
-    theme: ["system", "light", "dark"].includes(value?.theme) ? value.theme : DEFAULT_PREFERENCES.theme,
-    language: ["ja", "en"].includes(value?.language) ? value.language : DEFAULT_PREFERENCES.language
+    theme: ["system", "light", "dark"].includes((value as { theme?: unknown } | null | undefined)?.theme as string) ? (value as { theme: Theme }).theme : DEFAULT_PREFERENCES.theme,
+    language: ["ja", "en"].includes((value as { language?: unknown } | null | undefined)?.language as string) ? (value as { language: Language }).language : DEFAULT_PREFERENCES.language
   };
 }
 
-function systemLanguage() {
+function systemLanguage(): Language {
   const locales = globalThis.navigator?.languages?.length ? globalThis.navigator.languages : [globalThis.navigator?.language];
   for (const locale of locales) {
     const normalized = typeof locale === "string" ? locale.toLowerCase() : "";
@@ -97,7 +105,7 @@ function systemLanguage() {
   return "ja";
 }
 
-async function updatePreference(key, value) {
+async function updatePreference(key: string, value: unknown) {
   preferences = normalizePreferences({ ...preferences, [key]: value });
   applyPreferences();
   try {
@@ -113,9 +121,9 @@ function applyPreferences() {
   root.dataset.theme = preferences.theme;
   root.style.colorScheme = preferences.theme === "system" ? "light dark" : preferences.theme;
   themeColorMeta?.setAttribute("content", resolvedTheme() === "dark" ? "#0d1628" : "#f7faff");
-  document.querySelectorAll("[data-i18n]").forEach((element) => { element.textContent = t(element.dataset.i18n); });
-  document.querySelectorAll("[data-i18n-aria-label]").forEach((element) => { element.setAttribute("aria-label", t(element.dataset.i18nAriaLabel)); });
-  preferenceButtons.forEach((button) => button.setAttribute("aria-pressed", String(preferences[button.dataset.preference] === button.dataset.value)));
+  document.querySelectorAll<HTMLElement>("[data-i18n]").forEach((element) => { element.textContent = t(element.dataset.i18n as CopyKey); });
+  document.querySelectorAll<HTMLElement>("[data-i18n-aria-label]").forEach((element) => { element.setAttribute("aria-label", t(element.dataset.i18nAriaLabel as CopyKey)); });
+  preferenceButtons.forEach((button) => button.setAttribute("aria-pressed", String(preferences[button.dataset.preference as keyof Preferences] === button.dataset.value)));
   renderCurrentUrlStatus();
   renderCurrentUrlUnavailable();
   renderScanStatus();
@@ -126,8 +134,8 @@ function resolvedTheme() {
   return preferences.theme === "system" ? (systemTheme?.matches ? "dark" : "light") : preferences.theme;
 }
 
-function t(key, values = {}) {
-  return COPY[preferences.language][key].replaceAll(/\{(\w+)\}/gu, (_, name) => String(values[name] ?? ""));
+function t(key: CopyKey, values: Substitutions = {}) {
+  return COPY[preferences.language][key].replaceAll(/\{(\w+)\}/gu, (_: string, name: string) => String(values[name] ?? ""));
 }
 
 async function initializeCurrentUrlQr() {
@@ -155,7 +163,7 @@ async function initializeCurrentUrlQr() {
   }
 }
 
-function showCurrentUrlQrUnavailable(currentUrl, error) {
+function showCurrentUrlQrUnavailable(currentUrl: string, error: unknown) {
   currentUrlQrFrame.dataset.state = "too-large";
   currentUrlQr.hidden = true;
   currentUrlLoading.hidden = true;
@@ -169,7 +177,7 @@ function showCurrentUrlQrUnavailable(currentUrl, error) {
   setCurrentUrlStatus(currentUrlUnavailableKey === "qrTooLarge" ? "currentUrlTooLarge" : "currentUrlQrError", "error");
 }
 
-function isQrCapacityError(error) {
+function isQrCapacityError(error: unknown) {
   return error instanceof Error && /too (?:big|large)|capacity|overflow/iu.test(error.message);
 }
 
@@ -187,12 +195,12 @@ async function copyCurrentUrl() {
   }
 }
 
-function setCurrentUrlExportEnabled(enabled) {
+function setCurrentUrlExportEnabled(enabled: boolean) {
   downloadCurrentUrlSvgButton.disabled = !enabled;
   downloadCurrentUrlPngButton.disabled = !enabled;
 }
 
-async function downloadCurrentUrlQr(format) {
+async function downloadCurrentUrlQr(format: "svg" | "png") {
   if (!currentUrl) return;
   const button = format === "svg" ? downloadCurrentUrlSvgButton : downloadCurrentUrlPngButton;
   button.disabled = true;
@@ -207,19 +215,19 @@ async function downloadCurrentUrlQr(format) {
   }
 }
 
-async function createSvgQr(value) {
+async function createSvgQr(value: string) {
   const svg = await QRCode.toString(value, { type: "svg", errorCorrectionLevel: "M", margin: 2, color: QR_CANVAS_COLORS });
   return new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
 }
 
-async function createPngQr(value) {
+async function createPngQr(value: string) {
   const canvas = document.createElement("canvas");
   await QRCode.toCanvas(canvas, value, { errorCorrectionLevel: "M", margin: 2, width: 2048, color: QR_CANVAS_COLORS });
-  const blob = await new Promise((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error("png_encode_failed")), "image/png"));
+  const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error("png_encode_failed")), "image/png"));
   return blob;
 }
 
-function downloadBlob(blob, filename) {
+function downloadBlob(blob: Blob, filename: string) {
   const href = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = href;
@@ -228,7 +236,7 @@ function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(href), 0);
 }
 
-function setCurrentUrlState(state) {
+function setCurrentUrlState(state: "loading" | "unsupported" | "error") {
   currentUrl = null;
   currentUrlQrFrame.dataset.state = state;
   currentUrlQr.hidden = true;
@@ -241,7 +249,7 @@ function setCurrentUrlState(state) {
   setCurrentUrlStatus(state === "unsupported" ? "currentUrlUnsupported" : state === "error" ? "currentUrlError" : "currentUrlLoading", state === "error" ? "error" : "");
 }
 
-function setCurrentUrlStatus(key, tone = "") {
+function setCurrentUrlStatus(key: CopyKey, tone: StatusTone = "") {
   currentUrlStatusKey = key;
   currentUrlStatusTone = tone;
   renderCurrentUrlStatus();
@@ -269,8 +277,8 @@ async function scanVisiblePage() {
   }
 }
 
-async function scanSelectedImage(event) {
-  const [file] = event.target.files;
+async function scanSelectedImage(event: Event) {
+  const [file] = (event.target as HTMLInputElement).files!;
   if (!file) return;
   setBusy(true, "scanImageBusy");
   try {
@@ -278,12 +286,12 @@ async function scanSelectedImage(event) {
   } catch {
     showError("imageReadError");
   } finally {
-    event.target.value = "";
+    (event.target as HTMLInputElement).value = "";
     setBusy(false);
   }
 }
 
-function setBusy(isBusy, messageKey = "") {
+function setBusy(isBusy: boolean, messageKey: CopyKey | "" = "") {
   scanPageButton.disabled = isBusy;
   scanPageButton.setAttribute("aria-busy", String(isBusy));
   fileInput.disabled = isBusy;
@@ -292,7 +300,7 @@ function setBusy(isBusy, messageKey = "") {
   if (messageKey) setStatus(messageKey);
 }
 
-function showDecoded(decoded) {
+function showDecoded(decoded: DecodedQr[]) {
   decodedResults = decoded;
   if (decoded.length === 0) {
     results.hidden = true;
@@ -304,11 +312,11 @@ function showDecoded(decoded) {
   setStatus("scanResults", "success", { count: decoded.length });
 }
 
-function renderDecodedResults(decoded) {
+function renderDecodedResults(decoded: DecodedQr[]) {
   resultList.replaceChildren(...decoded.map(createResultItem));
 }
 
-function createResultItem(result) {
+function createResultItem(result: DecodedQr) {
   const item = document.createElement("li");
   item.className = "result-item";
   const value = document.createElement("code");
@@ -342,16 +350,16 @@ function createResultItem(result) {
   return item;
 }
 
-function readFile(file) {
-  return new Promise((resolve, reject) => {
+function readFile(file: File): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
+    reader.onload = () => resolve(reader.result as string);
     reader.onerror = () => reject(new Error("image_read_failed"));
     reader.readAsDataURL(file);
   });
 }
 
-function setStatus(key, tone = "", values = {}) {
+function setStatus(key: CopyKey, tone: StatusTone = "", values: Substitutions = {}) {
   scanStatusKey = key;
   scanStatusTone = tone;
   scanStatusValues = values;
@@ -363,13 +371,13 @@ function renderScanStatus() {
   status.dataset.tone = scanStatusTone;
 }
 
-function showError(key) {
+function showError(key: CopyKey) {
   decodedResults = null;
   results.hidden = true;
   setStatus(key, "error");
 }
 
-function captureErrorMessage(error) {
+function captureErrorMessage(error: unknown) {
   const message = error instanceof Error ? error.message : "";
   return message.includes("Cannot access") ? "protectedCapture" : "captureError";
 }

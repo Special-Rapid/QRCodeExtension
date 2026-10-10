@@ -11,3 +11,5 @@ Chromeへ配布するJavaScriptは既存esbuildから生成する `dist/` 内の
 作業記録・状態表・検証証跡は非公開のローカル `docs/` に保存し、stage・commit・push・公開配信しません。専用worktreeではprimary checkoutの既存記録を更新して読み戻し、公開PRでは実読による確認結果だけを要約します。非公開記録本体を公開差分へ追加しません。
 
 既存manifestの回帰テスト `test/manifest.test.mts` もstrict型検査の対象です。自己repoの固定manifestを読むテスト用構造を明示し、権限・対応Chrome版・配布ファイルのassertionを保持します。この構造宣言は外部JSONのruntime検証には使いません。
+
+popupの編集元 `src/popup.mts` は、固定HTMLのDOM、設定のmembership判定、表示状態、QR結果、Chrome tabs/storageとQR生成libraryの使用範囲をstrict型検査へ含めます。`src/qrcode-browser.d.ts` は使用するPromise版だけを宣言します。保存値は `unknown` として受け、既存の判定後だけ設定値へ絞ります。固定HTMLのdatasetとFileReaderのreadAsDataURL成功値への型注釈は、runtime検証の追加ではありません。配布先 `dist/popup.js` と挙動を維持します。
