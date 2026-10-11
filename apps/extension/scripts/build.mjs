@@ -14,6 +14,6 @@ await Promise.all([
   cp("src/icon-128.png", "dist/icon-128.png"),
   cp("src/connector-bridge.js", "dist/connector-bridge.js"),
   build({ entryPoints: ["src/popup.js"], bundle: true, format: "esm", outfile: "dist/popup.js", target: "chrome114" }),
-  build({ entryPoints: ["src/options.js"], bundle: true, format: "esm", outfile: "dist/options.js", target: "chrome114" }),
+  build({ entryPoints: ["src/options.ts"], bundle: true, format: "esm", outfile: "dist/options.js", target: "chrome114" }),
   build({ entryPoints: ["src/handoff-background.js"], bundle: true, format: "esm", outfile: "dist/handoff-background.js", target: "chrome114" })
 ]);
