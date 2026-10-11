@@ -162,7 +162,7 @@ async function importPopup(environment, suffix) {
   };
 
   try {
-    await import(new URL(`../src/popup.js?popup-test=${suffix}`, import.meta.url));
+    await import(new URL(`../src/popup.mts?popup-test=${suffix}`, import.meta.url));
     return previous;
   } catch (error) {
     Object.assign(globalThis, previous);

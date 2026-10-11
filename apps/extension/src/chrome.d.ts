@@ -9,6 +9,15 @@ type ConnectorResponse =
   | { ok: false; error: string };
 
 declare const chrome: {
+  tabs: {
+    query(queryInfo: { active: boolean; currentWindow: boolean }): Promise<Array<{ id?: number; windowId?: number; url?: string }>>;
+    captureVisibleTab(windowId: number, options: { format: "png" }): Promise<string>;
+    create(createProperties: { url: string }): Promise<unknown>;
+  };
+  storage: { local: {
+    get(key: string): Promise<Record<string, unknown>>;
+    set(items: Record<string, unknown>): Promise<void>;
+  } };
   runtime: {
     sendMessage(message: ConnectorMessage): Promise<ConnectorResponse | undefined>;
   };
