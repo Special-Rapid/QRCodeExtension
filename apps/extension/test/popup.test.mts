@@ -1,13 +1,49 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-function createNode() {
+// 本物のDOM/Chrome型へ偽装せず、このテストが用意する部分fixtureを表す。
+interface NodeEventFixture { target: NodeFixture }
+interface NodeFixture {
+  attributes: Map<string, string>;
+  listeners: Map<string, (event: NodeEventFixture) => unknown>;
+  addEventListener(type: string, listener: (event: NodeEventFixture) => unknown): void;
+  trigger(type: string, event?: NodeEventFixture): Promise<unknown>;
+  setAttribute(name: string, value: unknown): void;
+  dataset: Record<string, string>;
+  disabled: boolean;
+  hidden: boolean;
+  click(): void;
+  clicked?: boolean;
+  href?: string;
+  download?: string;
+  textContent: string;
+  value: string;
+}
+interface TabFixture { id: number; windowId: number; url?: string }
+interface EnvironmentOptions {
+  captureVisibleTab: (windowId: number, options?: { format: string }) => Promise<string>;
+  activeTab?: TabFixture;
+  queryActiveTab?: () => Promise<TabFixture[]>;
+  preferences?: Record<string, unknown>;
+  systemDark?: boolean;
+  systemLanguage?: string;
+  storageGet?: () => Promise<{ popup_preferences: unknown }>;
+}
+interface PopupGlobals {
+  chrome?: unknown;
+  document?: unknown;
+  Image?: unknown;
+  matchMedia?: unknown;
+  navigator?: unknown;
+}
+
+function createNode(): NodeFixture {
   return {
-    attributes: new Map(),
-    listeners: new Map(),
-    addEventListener(type, listener) { this.listeners.set(type, listener); },
-    async trigger(type, event = { target: this }) { return this.listeners.get(type)?.(event); },
-    setAttribute(name, value) { this.attributes.set(name, String(value)); },
+    attributes: new Map<string, string>(),
+    listeners: new Map<string, (event: NodeEventFixture) => unknown>(),
+    addEventListener(type: string, listener: (event: NodeEventFixture) => unknown) { this.listeners.set(type, listener); },
+    async trigger(this: NodeFixture, type: string, event: NodeEventFixture = { target: this }) { return this.listeners.get(type)?.(event); },
+    setAttribute(name: string, value: unknown) { this.attributes.set(name, String(value)); },
     dataset: {},
     disabled: false,
     hidden: false,
@@ -22,18 +58,18 @@ function createCanvasNode() {
     ...createNode(),
     width: 216,
     height: 216,
-    toBlob(callback) { callback(new Blob(["png"], { type: "image/png" })); },
+    toBlob(callback: (blob: Blob) => void) { callback(new Blob(["png"], { type: "image/png" })); },
     getContext: () => ({
       clearRect() {},
       fillRect() {},
-      createImageData: (width, height) => ({ data: new Uint8ClampedArray(width * height * 4) }),
+      createImageData: (width: number, height: number) => ({ data: new Uint8ClampedArray(width * height * 4) }),
       putImageData() {}
     })
   };
 }
 
-function createEnvironment({ captureVisibleTab, activeTab = { id: 71, windowId: 17 }, queryActiveTab = async () => [activeTab], preferences = {}, systemDark = false, systemLanguage = "ja-JP", storageGet = async () => ({ popup_preferences: preferences }) }) {
-  const downloads = [];
+function createEnvironment({ captureVisibleTab, activeTab = { id: 71, windowId: 17 }, queryActiveTab = async () => [activeTab], preferences = {}, systemDark = false, systemLanguage = "ja-JP", storageGet = async () => ({ popup_preferences: preferences }) }: EnvironmentOptions) {
+  const downloads: { href: string | undefined; filename: string | undefined }[] = [];
   const scanPageButton = createNode();
   const scanButtonContent = createNode();
   const scanLoading = createNode();
@@ -104,13 +140,13 @@ function createEnvironment({ captureVisibleTab, activeTab = { id: 71, windowId: 
         query: queryActiveTab,
         captureVisibleTab
       },
-      storage: { local: { get: storageGet, async set(next) { Object.assign(preferences, next.popup_preferences); } } }
+      storage: { local: { get: storageGet, async set(next: { popup_preferences: Record<string, unknown> }) { Object.assign(preferences, next.popup_preferences); } } }
     },
     document: {
-      documentElement: { lang: "ja", dataset: {}, style: {} },
-      querySelector: (selector) => selector === 'meta[name="theme-color"]' ? themeColorMeta : elements.get(selector),
-      querySelectorAll: (selector) => selector === "[data-preference]" ? preferenceButtons : [],
-      createElement: (tag) => {
+      documentElement: { lang: "ja", dataset: {} as Record<string, string>, style: {} as Record<string, string> },
+      querySelector: (selector: string) => selector === 'meta[name="theme-color"]' ? themeColorMeta : elements.get(selector),
+      querySelectorAll: (selector: string) => selector === "[data-preference]" ? preferenceButtons : [],
+      createElement: (tag: string) => {
         if (tag !== "canvas") {
           const node = createNode();
           if (tag === "a") node.click = () => { downloads.push({ href: node.href, filename: node.download }); };
@@ -119,11 +155,11 @@ function createEnvironment({ captureVisibleTab, activeTab = { id: 71, windowId: 
         return {
           width: 0,
           height: 0,
-          toBlob(callback) { callback(new Blob(["png"], { type: "image/png" })); },
+          toBlob(callback: (blob: Blob) => void) { callback(new Blob(["png"], { type: "image/png" })); },
           getContext: () => ({
             clearRect() {},
             fillRect() {},
-            createImageData: (width, height) => ({ data: new Uint8ClampedArray(width * height * 4) }),
+            createImageData: (width: number, height: number) => ({ data: new Uint8ClampedArray(width * height * 4) }),
             putImageData() {},
             drawImage() {},
             getImageData: () => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 })
@@ -137,7 +173,7 @@ function createEnvironment({ captureVisibleTab, activeTab = { id: 71, windowId: 
   };
 }
 
-async function waitFor(predicate) {
+async function waitFor(predicate: () => boolean) {
   for (let attempt = 0; attempt < 30; attempt += 1) {
     if (predicate()) return;
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -145,24 +181,27 @@ async function waitFor(predicate) {
   throw new Error("Timed out while waiting for popup state");
 }
 
-async function importPopup(environment, suffix) {
-  const previous = { chrome: globalThis.chrome, document: globalThis.document, Image: globalThis.Image, matchMedia: globalThis.matchMedia, navigatorDescriptor: Object.getOwnPropertyDescriptor(globalThis, "navigator") };
-  globalThis.chrome = environment.chrome;
-  globalThis.document = environment.document;
-  globalThis.matchMedia = environment.matchMedia;
+async function importPopup(environment: ReturnType<typeof createEnvironment>, suffix: string) {
+  const previous = { chrome: (globalThis as unknown as PopupGlobals).chrome, document: (globalThis as unknown as PopupGlobals).document, Image: (globalThis as unknown as PopupGlobals).Image, matchMedia: (globalThis as unknown as PopupGlobals).matchMedia, navigatorDescriptor: Object.getOwnPropertyDescriptor(globalThis, "navigator") };
+  (globalThis as unknown as PopupGlobals).chrome = environment.chrome;
+  (globalThis as unknown as PopupGlobals).document = environment.document;
+  (globalThis as unknown as PopupGlobals).matchMedia = environment.matchMedia;
   Object.defineProperty(globalThis, "navigator", { configurable: true, value: environment.navigator });
-  globalThis.Image = class {
+  (globalThis as unknown as PopupGlobals).Image = class {
     naturalWidth = 1;
     naturalHeight = 1;
+    declare source: string;
+    declare onload: (() => void) | undefined;
 
-    set src(value) {
+    set src(value: string) {
       this.source = value;
-      queueMicrotask(() => this.onload());
+      queueMicrotask(() => this.onload!());
     }
   };
 
   try {
-    await import(new URL(`../src/popup.mts?popup-test=${suffix}`, import.meta.url));
+    // NodeのimportはURLの文字列変換を受け付ける。型上のstring制約へ合わせ、URLの実体は保持する。
+    await import(new URL(`../src/popup.mts?popup-test=${suffix}`, import.meta.url) as unknown as string);
     return previous;
   } catch (error) {
     Object.assign(globalThis, previous);
@@ -170,13 +209,13 @@ async function importPopup(environment, suffix) {
   }
 }
 
-function restoreEnvironment(previous) {
+function restoreEnvironment(previous: Awaited<ReturnType<typeof importPopup>>) {
   Object.assign(globalThis, { chrome: previous.chrome, document: previous.document, Image: previous.Image, matchMedia: previous.matchMedia });
   if (previous.navigatorDescriptor) Object.defineProperty(globalThis, "navigator", previous.navigatorDescriptor);
-  else delete globalThis.navigator;
+  else delete (globalThis as unknown as PopupGlobals).navigator;
 }
 
-async function withClipboard(writeText, action) {
+async function withClipboard(writeText: (text: string) => Promise<void>, action: () => Promise<void>) {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator");
   Object.defineProperty(globalThis, "navigator", {
     configurable: true,
@@ -186,17 +225,17 @@ async function withClipboard(writeText, action) {
     await action();
   } finally {
     if (descriptor) Object.defineProperty(globalThis, "navigator", descriptor);
-    else delete globalThis.navigator;
+    else delete (globalThis as unknown as PopupGlobals).navigator;
   }
 }
 
 test("automatically captures the active tab and replaces the loader when decoding completes", async () => {
-  let capturedWindowId;
-  let finishCapture;
+  let capturedWindowId: number | undefined;
+  let finishCapture!: (data: string) => void;
   const environment = createEnvironment({
     captureVisibleTab: async (windowId) => {
       capturedWindowId = windowId;
-      return new Promise((resolve) => { finishCapture = resolve; });
+      return new Promise<string>((resolve) => { finishCapture = resolve; });
     }
   });
   const previous = await importPopup(environment, "success");

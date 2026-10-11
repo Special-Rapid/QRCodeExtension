@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node --test test/*.test.mjs test/*.test.mts",
+    "test": "node --test test/*.test.mts",
     "check": "npm run typecheck && npm run build && npm test",
     "pretest": "node ../../tooling/prepare-build-assets.mjs",
     "typecheck": "tsc --noEmit"
