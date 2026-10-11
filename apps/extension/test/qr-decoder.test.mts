@@ -5,7 +5,7 @@ import { PNG } from "pngjs";
 import { decodeImageData } from "../src/qr-decoder.ts";
 import { toSafeHttpUrl } from "../src/safe-url.ts";
 
-async function rasterize(value) {
+async function rasterize(value: string) {
   const dataUrl = await QRCode.toDataURL(value, { errorCorrectionLevel: "H", margin: 2, width: 300 });
   const png = PNG.sync.read(Buffer.from(dataUrl.split(",")[1], "base64"));
   return png;
@@ -29,11 +29,11 @@ test("finds multiple QR codes by masking each detected code before the next pass
   const values = ["https://example.com/one", "https://example.com/two"];
   const codes = await Promise.all(values.map(rasterize));
   const image = new PNG({ width: codes[0].width * 2, height: codes[0].height, fill: true });
-  image.data.fill(255);
+  image.data!.fill(255);
   PNG.bitblt(codes[0], image, 0, 0, codes[0].width, codes[0].height, 0, 0);
   PNG.bitblt(codes[1], image, 0, 0, codes[1].width, codes[1].height, codes[0].width, 0);
 
-  const results = decodeImageData({ data: new Uint8ClampedArray(image.data), width: image.width, height: image.height });
+  const results = decodeImageData({ data: new Uint8ClampedArray(image.data!), width: image.width, height: image.height });
   assert.deepEqual(new Set(results.map((result) => result.data)), new Set(values));
 });
 
@@ -41,12 +41,12 @@ test("finds QR codes in every quadrant when a full-image pass cannot isolate the
   const values = ["https://example.com/one", "https://example.com/two", "https://example.com/three", "https://example.com/four"];
   const codes = await Promise.all(values.map(rasterize));
   const image = new PNG({ width: codes[0].width * 2, height: codes[0].height * 2, fill: true });
-  image.data.fill(255);
+  image.data!.fill(255);
   for (const [index, code] of codes.entries()) {
     PNG.bitblt(code, image, 0, 0, code.width, code.height, (index % 2) * code.width, Math.floor(index / 2) * code.height);
   }
 
-  const results = decodeImageData({ data: new Uint8ClampedArray(image.data), width: image.width, height: image.height });
+  const results = decodeImageData({ data: new Uint8ClampedArray(image.data!), width: image.width, height: image.height });
   assert.deepEqual(new Set(results.map((result) => result.data)), new Set(values));
 });
 

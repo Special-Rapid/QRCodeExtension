@@ -12,4 +12,6 @@ Chromeへ配布するJavaScriptは既存esbuildから生成する `dist/` 内の
 
 既存manifestの回帰テスト `test/manifest.test.mts` もstrict型検査の対象です。自己repoの固定manifestを読むテスト用構造を明示し、権限・対応Chrome版・配布ファイルのassertionを保持します。この構造宣言は外部JSONのruntime検証には使いません。
 
+画像decoderの既存回帰テスト `test/qr-decoder.test.mts` もstrict型検査へ含めます。`test/fixture-libraries.d.ts` はfixtureで使うQR生成・PNG pixel APIの範囲を宣言し、テストのassertionと実行内容は保持します。
+
 popupの編集元 `src/popup.mts` は、固定HTMLのDOM、設定のmembership判定、表示状態、QR結果、Chrome tabs/storageとQR生成libraryの使用範囲をstrict型検査へ含めます。`src/qrcode-browser.d.ts` は使用するPromise版だけを宣言します。保存値は `unknown` として受け、既存の判定後だけ設定値へ絞ります。固定HTMLのdatasetとFileReaderのreadAsDataURL成功値への型注釈は、runtime検証の追加ではありません。配布先 `dist/popup.js` と挙動を維持します。
