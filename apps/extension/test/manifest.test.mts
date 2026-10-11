@@ -2,8 +2,21 @@ import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
+// 自己repoの固定manifestを読むテスト用契約。外部JSONの検証には使わない。
+interface ExtensionManifest {
+  manifest_version: number;
+  permissions: string[];
+  minimum_chrome_version: string;
+  host_permissions: string[];
+  background: { service_worker: string };
+  options_ui: { page: string };
+  icons: Record<string, string>;
+  action: { default_popup: string };
+  content_scripts: { matches: string[]; js: string[]; run_at: string }[];
+}
+
 test("declares a camera-free Manifest V3 extension with a Chrome 121+ fast connector", async () => {
-  const manifest = JSON.parse(await readFile("src/manifest.json", "utf8"));
+  const manifest: ExtensionManifest = JSON.parse(await readFile("src/manifest.json", "utf8"));
   assert.equal(manifest.manifest_version, 3);
   assert.deepEqual(manifest.permissions, ["activeTab", "notifications", "storage", "alarms"]);
   assert.equal(manifest.minimum_chrome_version, "121");
