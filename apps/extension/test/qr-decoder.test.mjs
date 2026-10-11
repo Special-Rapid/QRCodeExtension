@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import QRCode from "qrcode";
 import { PNG } from "pngjs";
-import { decodeImageData } from "../src/qr-decoder.js";
+import { decodeImageData } from "../src/qr-decoder.ts";
 import { toSafeHttpUrl } from "../src/safe-url.ts";
 
 async function rasterize(value) {

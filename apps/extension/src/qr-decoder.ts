@@ -1,10 +1,18 @@
-import jsQR from "jsqr";
+import jsQR, { type QRCode } from "jsqr";
+
+export type ImagePixels = Pick<ImageData, "data" | "width" | "height">;
+type Point = { x: number; y: number };
+type Region = { x: number; y: number; width: number; height: number };
+export interface DecodedQr {
+  data: string;
+  location: Record<string, Point>;
+}
 
 const MAX_DIMENSION = 2048;
 const MAX_RESULTS = 20;
 
-export function decodeImageData(imageData) {
-  const results = [];
+export function decodeImageData(imageData: ImagePixels): DecodedQr[] {
+  const results: DecodedQr[] = [];
 
   for (const region of scanRegions(imageData.width, imageData.height)) {
     if (results.length >= MAX_RESULTS) break;
@@ -24,10 +32,10 @@ export function decodeImageData(imageData) {
   return results;
 }
 
-export async function decodeImageSource(source) {
+export async function decodeImageSource(source: string): Promise<DecodedQr[]> {
   const image = await loadImage(source);
   const maximumScale = Math.min(1, MAX_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight));
-  const results = [];
+  const results: DecodedQr[] = [];
 
   for (const multiplier of [1, 0.75, 0.5]) {
     const scale = maximumScale * multiplier;
@@ -36,7 +44,8 @@ export async function decodeImageSource(source) {
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
-    const context = canvas.getContext("2d", { willReadFrequently: true });
+    // 新規canvasの2D contextを使う既存前提を保持し、null時のruntimeも変更しない。
+    const context = canvas.getContext("2d", { willReadFrequently: true })!;
     context.drawImage(image, 0, 0, width, height);
 
     for (const result of decodeImageData(context.getImageData(0, 0, width, height))) {
@@ -48,8 +57,8 @@ export async function decodeImageSource(source) {
   return results;
 }
 
-function loadImage(source) {
-  return new Promise((resolve, reject) => {
+function loadImage(source: string): Promise<HTMLImageElement> {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
     image.onerror = () => reject(new Error("画像を読み込めませんでした。PNG・JPEG・WebP・GIFを選択してください。"));
@@ -57,7 +66,7 @@ function loadImage(source) {
   });
 }
 
-function scanRegions(width, height) {
+function scanRegions(width: number, height: number): Region[] {
   const halfWidth = Math.ceil(width / 2);
   const halfHeight = Math.ceil(height / 2);
   return [
@@ -73,7 +82,7 @@ function scanRegions(width, height) {
   ];
 }
 
-function copyRegion(imageData, region) {
+function copyRegion(imageData: ImagePixels, region: Region): Uint8ClampedArray {
   const data = new Uint8ClampedArray(region.width * region.height * 4);
   for (let row = 0; row < region.height; row += 1) {
     const sourceStart = ((region.y + row) * imageData.width + region.x) * 4;
@@ -83,11 +92,11 @@ function copyRegion(imageData, region) {
   return data;
 }
 
-function translateLocation(location, region) {
+function translateLocation(location: Readonly<Record<string, Point>>, region: Region): Record<string, Point> {
   return Object.fromEntries(Object.entries(location).map(([key, point]) => [key, { x: point.x + region.x, y: point.y + region.y }]));
 }
 
-function coverDetectedCode(data, width, height, location) {
+function coverDetectedCode(data: Uint8ClampedArray, width: number, height: number, location: QRCode["location"]): void {
   const points = [location.topLeftCorner, location.topRightCorner, location.bottomLeftCorner, location.bottomRightCorner];
   const padding = 8;
   const left = Math.max(0, Math.floor(Math.min(...points.map((point) => point.x)) - padding));
