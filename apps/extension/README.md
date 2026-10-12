@@ -17,3 +17,5 @@ Chromeへ配布するJavaScriptは既存esbuildから生成する `dist/` 内の
 extensionの既存回帰テストはすべて`.mts`でstrict型検査します。popupとbackgroundの代替DOM/Chrome/workerはfixture専用の構造で表し、本物のブラウザーAPIの完全実装とは扱いません。brand-assetsテストが使う未移行generatorのexport範囲は`tooling/generate-brand-assets.d.mts`で宣言しています。generator実装自体の型移行は親Issue #15の後続対象です。
 
 popupの編集元 `src/popup.mts` は、固定HTMLのDOM、設定のmembership判定、表示状態、QR結果、Chrome tabs/storageとQR生成libraryの使用範囲をstrict型検査へ含めます。`src/qrcode-browser.d.ts` は使用するPromise版だけを宣言します。保存値は `unknown` として受け、既存の判定後だけ設定値へ絞ります。固定HTMLのdatasetとFileReaderのreadAsDataURL成功値への型注釈は、runtime検証の追加ではありません。配布先 `dist/popup.js` と挙動を維持します。
+
+ビルド入口 `scripts/build.mts` もstrict型検査へ含めます。Node.js 22.18以降でTypeScriptを直接実行し、既存のasset生成・静的ファイルcopy・esbuild bundle処理を同じ順序で行います。配布先のファイル名とmanifestは維持します。
