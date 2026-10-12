@@ -26,3 +26,7 @@ npx eas-cli@latest build --platform android --profile production
 ### GitHub PRからのpreview build
 
 Expo GitHub Appをこのrepositoryへ接続し、base directoryを`apps/mobile`にすると、PRへ`eas-build-android:preview`を付けてAndroid internal previewを作れます。通常のpushではmobile buildを作りません。iOSまたは両方をPR labelで起動する場合は、先に各platformの成功済みEAS buildと`preview.ios.image`を用意したうえで、`eas-build-ios:preview`または`eas-build-all:preview`を使います。
+
+## 契約テストの型検査
+
+`test/*.test.mts` の既存3テストを `tsconfig.test.json` のstrict検査へ含めます。Node用の型環境はアプリのExpo設定から分けます。固定repoファイルを読むpathをstringで表し、既存の10回帰とassertionを保持します。Node.js 22.18以降で `npm run check` を実行してください。これらのソース契約テストは、実機のカメラ・Share Sheet・Control Center・Quick Settingsの受入確認とは別です。
