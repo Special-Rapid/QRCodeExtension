@@ -14,9 +14,15 @@
     "sourceMap": false,
     "rootDir": "web",
     "outDir": "public",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": {
+      "/notification-state.js": [
+        "./web/notification-state.ts"
+      ]
+    }
   },
   "include": [
-    "web/notification-state.ts"
+    "web/notification-state.ts",
+    "web/app.ts"
   ]
 }

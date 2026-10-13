@@ -70,4 +70,4 @@ jobs:
         run: npm run check
 
       - name: Web生成物の同期を確認
-        run: git diff --exit-code -- apps/handoff/public/notification-state.js apps/handoff/public/service-worker.js
+        run: git diff --exit-code -- apps/handoff/public/notification-state.js apps/handoff/public/service-worker.js apps/handoff/public/app.js
