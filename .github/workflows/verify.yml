@@ -70,4 +70,4 @@ jobs:
         run: npm run check
 
       - name: Tooling生成物の同期を確認
-        run: git diff --exit-code -- tooling/generate-brand-assets.mjs tooling/generate-brand-assets.d.mts tooling/prepare-native-assets.mjs tooling/prepare-native-assets.d.mts tooling/prepare-build-assets.mjs tooling/prepare-build-assets.d.mts
+        run: npm run check:tooling

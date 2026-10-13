@@ -17,7 +17,8 @@
     "prepare:native-assets": "npm run build:tooling && node tooling/prepare-build-assets.mjs --native",
     "test:build-assets": "npm run build:tooling && node --test tooling/test/*.test.mjs",
     "build:tooling": "npm --prefix apps/extension run build:tooling",
-    "typecheck:tooling": "npm --prefix apps/extension run typecheck:tooling"
+    "typecheck:tooling": "npm --prefix apps/extension run typecheck:tooling",
+    "check:tooling": "node tooling/build-tooling.mts --check"
   },
   "workspaces": [
     "apps/extension"
