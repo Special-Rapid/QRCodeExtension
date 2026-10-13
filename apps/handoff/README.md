@@ -34,3 +34,5 @@ npm run deploy:production
 `qr.snkisk.com`には既存DNSレコードがあるため、このリポジトリはCustom Domainをまだ設定しません。最初のデプロイ後に現在のDNSの用途を確認してから接続します。
 
 開いたWeb受信箱にはDurable Object WebSocketで新着が届きます。タブを閉じた状態でも届くWeb Pushは、VAPID鍵をCloudflare secretとして登録してから追加します。秘密鍵やトークンはGitへ入れません。
+
+通知状態とWeb受信箱の既存テストは `test/notification-state.test.ts` と `test/web-receiver.test.ts` をstrict型検査します。`test/web-receiver-fixtures.d.ts` は固定service-workerを評価する代替Cache・Fetch・通知イベントの使用範囲だけで、実ブラウザーAPIの完全実装や製品入力検証ではありません。`test/notification-state-contract.d.ts` は未移行 `public/notification-state.js` のテスト使用exportだけを宣言し、無視される追加引数も既存どおり扱います。public実装の型移行は親Issue #15の後続対象です。
