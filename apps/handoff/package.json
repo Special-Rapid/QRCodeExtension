@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit && tsc --project tsconfig.web.json --noEmit",
-    "build:web": "tsc --project tsconfig.web.json",
+    "typecheck": "tsc --noEmit && tsc --project tsconfig.web.json --noEmit && tsc --project tsconfig.worker.json --noEmit",
+    "build:web": "tsc --project tsconfig.web.json && tsc --project tsconfig.worker.json",
     "pretest": "npm run build:web",
     "check": "npm run typecheck && npm run test",
     "vapid:generate": "web-push generate-vapid-keys",

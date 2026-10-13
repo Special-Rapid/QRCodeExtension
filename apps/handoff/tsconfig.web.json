@@ -17,6 +17,6 @@
     "skipLibCheck": true
   },
   "include": [
-    "web/**/*.ts"
+    "web/notification-state.ts"
   ]
 }
