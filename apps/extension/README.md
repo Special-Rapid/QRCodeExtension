@@ -6,7 +6,7 @@
 
 URL検証と現在タブURL取得の編集元は `src/safe-url.ts` と `src/current-url.ts` です。画像読み取りの編集元 `src/qr-decoder.ts` も、pixel入力・領域・検出座標・結果をstrict型検査へ含めます。設定画面の編集元 `src/options.ts` と `src/chrome.d.ts` は、固定DOMと自己extensionのruntime message応答を型検査します。connectorの内容は `unknown` のまま保持し、既存の存在判定だけを行います。新規canvasの2D contextを使う既存の前提は型注釈でも維持し、runtimeの失敗処理を変更しません。`npm run typecheck` でこの段階のTypeScript source・テストを厳格に検査し、`npm run check` でbundleと回帰テストも確認します。Node.js 22.18以降で実行してください。
 
-Chromeへ配布するJavaScriptは既存esbuildから生成する `dist/` 内の成果物です。生成元を編集し、配布物を直接編集しないでください。他のJavaScript source/scripts/testsは親Issue #15の後続段階で移行し、移行完了済みとは扱いません。
+Chromeへ配布するJavaScriptは既存esbuildから生成する `dist/` 内の成果物です。生成元を編集し、配布物を直接編集しないでください。この統合差分ではextensionの自作source・build script・既存testをstrict型検査へ含めます。mainへの採用完了やrelease-readyを示すものではありません。
 
 作業記録・状態表・検証証跡は非公開のローカル `docs/` に保存し、stage・commit・push・公開配信しません。専用worktreeではprimary checkoutの既存記録を更新して読み戻し、公開PRでは実読による確認結果だけを要約します。非公開記録本体を公開差分へ追加しません。
 
@@ -14,6 +14,16 @@ Chromeへ配布するJavaScriptは既存esbuildから生成する `dist/` 内の
 
 画像decoderの既存回帰テスト `test/qr-decoder.test.mts` もstrict型検査へ含めます。`test/fixture-libraries.d.ts` はfixtureで使うQR生成・PNG pixel APIの範囲を宣言し、テストのassertionと実行内容は保持します。
 
-extensionの既存回帰テストはすべて`.mts`でstrict型検査します。popupとbackgroundの代替DOM/Chrome/workerはfixture専用の構造で表し、本物のブラウザーAPIの完全実装とは扱いません。brand-assetsテストが使う未移行generatorのexport範囲は`tooling/generate-brand-assets.d.mts`で宣言しています。generator実装自体の型移行は親Issue #15の後続対象です。
+extensionの既存回帰テストはすべて`.mts`でstrict型検査します。popupとbackgroundの代替DOM/Chrome/workerはfixture専用の構造で表し、本物のブラウザーAPIの完全実装とは扱いません。brand-assetsテストは [tooling/README.md](../../tooling/README.md) のTypeScript編集元から生成したMJSと型宣言を使います。`tooling/generate-brand-assets.d.mts` は同じ実装sourceからの生成物で、直接編集しません。
 
 popupの編集元 `src/popup.mts` は、固定HTMLのDOM、設定のmembership判定、表示状態、QR結果、Chrome tabs/storageとQR生成libraryの使用範囲をstrict型検査へ含めます。`src/qrcode-browser.d.ts` は使用するPromise版だけを宣言します。保存値は `unknown` として受け、既存の判定後だけ設定値へ絞ります。固定HTMLのdatasetとFileReaderのreadAsDataURL成功値への型注釈は、runtime検証の追加ではありません。配布先 `dist/popup.js` と挙動を維持します。
+
+ビルド入口 `scripts/build.mts` もstrict型検査へ含めます。Node.js 22.18以降でTypeScriptを直接実行し、既存のasset生成・静的ファイルcopy・esbuild bundle処理を同じ順序で行います。配布先のファイル名とmanifestは維持します。
+
+通信helperの編集元 `src/handoff-client.ts` はrequest optionsを型付けし、外部JSONは `unknown` のまま返します。error属性の型投影は既存typeof判定を保つためで、JSON全体を検証済みobjectとは扱いません。nullやparse失敗を含む既存挙動を維持し、入力検証・API・認証・URL判定を追加変更しません。
+
+backgroundの編集元 `src/handoff-background.mts` は、使用するChrome/worker APIの範囲を `src/background-contracts.d.ts` で表します。message・JSON・storageはunknownとして受け、属性の投影は既存の読取りとguardを保持するためです。JavaScriptのcoerce-or-throw呼出し・算術の局所投影は、入力を検証済みとするものではありません。pending ACKの型は既存typeof filter後だけ検証済みとして表します。
+
+ACK状態の正本はChrome local storageです。単一service worker内のPromise直列化、connector先行削除とnull削除sentinel、connector id/code一致、eventIdの重複排除、自前ACKの10分TTLと再起動後の再送を保持します。ネットワークACKとlocal storageを跨ぐACIDは主張しません。既存server ACKは同一eventのacknowledgedAtを初回だけ保存します。実Chrome/Push受入はNode fixtureとは別です。
+
+content scriptの編集元 `src/connector-bridge.mts` はmessage/claim応答をunknownで受け、既存origin/source/extensionId/token guardと属性読取りを保持します。token:stringの投影は直前のtypeof判定後だけです。buildはbundle・module変換を行わずclassic scriptとして `dist/connector-bridge.js` を生成し、manifestとWeb通信契約を維持します。この配布入口だけは `alwaysStrict: false` で既存にないstrict directiveの挿入を防ぎ、ソースのstrict型検査は維持します。宣言したChrome APIは使用範囲だけで、任意応答のschema検証ではありません。

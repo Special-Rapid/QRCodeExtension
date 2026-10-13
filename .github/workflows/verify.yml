@@ -68,3 +68,9 @@ jobs:
 
       - name: Run all repository checks
         run: npm run check
+
+      - name: Web生成物の同期を確認
+        run: git diff --exit-code -- apps/handoff/public/notification-state.js apps/handoff/public/service-worker.js apps/handoff/public/app.js
+
+      - name: Tooling生成物の同期を確認
+        run: npm run check:tooling

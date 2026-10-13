@@ -36,7 +36,7 @@ test("declares a camera-free Manifest V3 extension with a Chrome 121+ fast conne
     ...manifest.content_scripts.flatMap((contentScript) => contentScript.js)
   ];
   await Promise.all(manifestFiles.map((file) => access(`dist/${file}`)));
-  const bridge = await readFile("src/connector-bridge.js", "utf8");
+  const bridge = await readFile("src/connector-bridge.mts", "utf8");
   assert.match(bridge, /announce\(\);\s*\n\s*function announce/);
   assert.match(bridge, /connector-result/);
 });

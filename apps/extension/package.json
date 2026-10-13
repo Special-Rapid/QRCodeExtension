@@ -5,11 +5,14 @@
   "description": "Camera-free QR Scan Chrome extension",
   "type": "module",
   "scripts": {
-    "build": "node scripts/build.mjs",
+    "build": "node scripts/build.mts",
     "test": "node --test test/*.test.mts",
     "check": "npm run typecheck && npm run build && npm test",
     "pretest": "node ../../tooling/prepare-build-assets.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:tooling": "node ../../tooling/build-tooling.mts",
+    "typecheck:tooling": "node ../../tooling/build-tooling.mts --noEmit",
+    "typecheck:tooling-tests": "tsc --project ../../tooling/tsconfig.test.json --noEmit"
   },
   "dependencies": {
     "jsqr": "^1.4.0",

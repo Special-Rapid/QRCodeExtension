@@ -5,7 +5,7 @@
   "description": "Camera-free QR scanning and secure mobile-to-PC link handoff",
   "type": "module",
   "scripts": {
-    "generate:brand-assets": "node tooling/generate-brand-assets.mjs",
+    "generate:brand-assets": "npm run build:tooling && node tooling/generate-brand-assets.mjs",
     "check:brand-assets": "npm run prepare:brand-assets && node tooling/generate-brand-assets.mjs --check",
     "build:extension": "npm --prefix apps/extension run build",
     "test:extension": "npm --prefix apps/extension run test",
@@ -13,9 +13,13 @@
     "check:handoff": "npm --prefix apps/handoff run check",
     "check:mobile": "npm --prefix apps/mobile run check",
     "check": "npm run test:build-assets && npm run check:extension && npm run check:handoff && npm run check:mobile",
-    "prepare:brand-assets": "node tooling/prepare-build-assets.mjs",
-    "prepare:native-assets": "node tooling/prepare-build-assets.mjs --native",
-    "test:build-assets": "node --test tooling/test/*.test.mjs"
+    "prepare:brand-assets": "npm run build:tooling && node tooling/prepare-build-assets.mjs",
+    "prepare:native-assets": "npm run build:tooling && node tooling/prepare-build-assets.mjs --native",
+    "test:build-assets": "npm run build:tooling && npm run typecheck:tooling-tests && node --test tooling/test/*.test.mts",
+    "build:tooling": "npm --prefix apps/extension run build:tooling",
+    "typecheck:tooling": "npm --prefix apps/extension run typecheck:tooling",
+    "check:tooling": "node tooling/build-tooling.mts --check",
+    "typecheck:tooling-tests": "npm --prefix apps/extension run typecheck:tooling-tests"
   },
   "workspaces": [
     "apps/extension"

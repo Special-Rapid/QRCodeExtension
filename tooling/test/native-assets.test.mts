@@ -3,15 +3,15 @@ import { createHash } from "node:crypto";
 import { access, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import test from "node:test";
+import test, { type TestContext } from "node:test";
 import { prepareNativeAssets, validateLock } from "../prepare-native-assets.mjs";
 
 const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
 const sha256 = createHash("sha256").update(png).digest("hex");
 const destination = "apps/mobile/android/app/src/main/res/drawable-mdpi/splashscreen_logo.png";
 const asset = () => ({ sha256, bytes: png.length, mime: "image/png", url: "https://images.snkisk.com/QRCodeExtension/unit-test-only.png", destinations: [destination] });
-const lock = (...assets) => ({ version: 1, assets });
-async function environment(t) {
+const lock = (...assets: unknown[]) => ({ version: 1, assets });
+async function environment(t: TestContext) {
   const temporary = await mkdtemp(path.join(os.tmpdir(), "qr-assets-test-"));
   t.after(() => rm(temporary, { recursive: true, force: true }));
   const root = path.join(temporary, "checkout");
@@ -19,9 +19,9 @@ async function environment(t) {
   await mkdir(root); await mkdir(cacheDir);
   return { root, cacheDir, offline: false };
 }
-async function put(root, file, bytes) { await mkdir(path.dirname(path.join(root, file)), { recursive: true }); await writeFile(path.join(root, file), bytes); }
+async function put(root: string, file: string, bytes: string | Buffer) { await mkdir(path.dirname(path.join(root, file)), { recursive: true }); await writeFile(path.join(root, file), bytes); }
 const forbiddenFetch = () => { throw new Error("Offline preparation must not use the network"); };
-const response = (bytes = png, type = "image/png") => new Response(bytes, { headers: { "content-type": type } });
+const response = (bytes = png, type = "image/png") => new Response(bytes as BodyInit, { headers: { "content-type": type } });
 
 test("verified offline cache restores multiple bundle paths with no network", async (t) => {
   const env = await environment(t); const a = asset();
@@ -33,7 +33,7 @@ test("verified offline cache restores multiple bundle paths with no network", as
 
 test("validated online input warms external cache then supports an offline clean build", async (t) => {
   const env = await environment(t); let calls = 0;
-  await prepareNativeAssets({ ...env, lock: lock(asset()), fetchImpl: async (_url, options) => { calls++; assert.equal(options.redirect, "error"); assert.equal(options.credentials, "omit"); return response(); } });
+  await prepareNativeAssets({ ...env, lock: lock(asset()), fetchImpl: async (_url, options) => { calls++; assert.equal(options!.redirect, "error"); assert.equal(options!.credentials, "omit"); return response(); } });
   assert.equal(calls, 1); await rm(path.join(env.root, "apps"), { recursive: true });
   await prepareNativeAssets({ ...env, lock: lock(asset()), offline: true, fetchImpl: forbiddenFetch });
   assert.deepEqual(await readFile(path.join(env.root, destination)), png);
