@@ -68,3 +68,6 @@ jobs:
 
       - name: Run all repository checks
         run: npm run check
+
+      - name: Web生成物の同期を確認
+        run: git diff --exit-code -- apps/handoff/public/notification-state.js

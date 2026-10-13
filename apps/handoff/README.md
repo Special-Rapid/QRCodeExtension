@@ -34,3 +34,5 @@ npm run deploy:production
 `qr.snkisk.com`には既存DNSレコードがあるため、このリポジトリはCustom Domainをまだ設定しません。最初のデプロイ後に現在のDNSの用途を確認してから接続します。
 
 開いたWeb受信箱にはDurable Object WebSocketで新着が届きます。タブを閉じた状態でも届くWeb Pushは、VAPID鍵をCloudflare secretとして登録してから追加します。秘密鍵やトークンはGitへ入れません。
+
+Web通知状態の編集元は [web/README.md](web/README.md) のTypeScriptです。`npm run build:web` はstrict型検査後に `public/notification-state.js` を生成し、型エラー時はemitしません。test前とWranglerのcustom buildからも呼びます。既存の配布URL・状態判定・public assetsを保持し、残るapp/service-workerの移行とは分けて扱います。custom buildの設定は [Cloudflare公式仕様](https://developers.cloudflare.com/workers/wrangler/configuration/#custom-builds) と使用中のWrangler schemaで確認しています。
