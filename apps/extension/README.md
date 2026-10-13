@@ -17,3 +17,5 @@ Chromeへ配布するJavaScriptは既存esbuildから生成する `dist/` 内の
 extensionの既存回帰テストはすべて`.mts`でstrict型検査します。popupとbackgroundの代替DOM/Chrome/workerはfixture専用の構造で表し、本物のブラウザーAPIの完全実装とは扱いません。brand-assetsテストが使う未移行generatorのexport範囲は`tooling/generate-brand-assets.d.mts`で宣言しています。generator実装自体の型移行は親Issue #15の後続対象です。
 
 popupの編集元 `src/popup.mts` は、固定HTMLのDOM、設定のmembership判定、表示状態、QR結果、Chrome tabs/storageとQR生成libraryの使用範囲をstrict型検査へ含めます。`src/qrcode-browser.d.ts` は使用するPromise版だけを宣言します。保存値は `unknown` として受け、既存の判定後だけ設定値へ絞ります。固定HTMLのdatasetとFileReaderのreadAsDataURL成功値への型注釈は、runtime検証の追加ではありません。配布先 `dist/popup.js` と挙動を維持します。
+
+content scriptの編集元 `src/connector-bridge.mts` はmessage/claim応答をunknownで受け、既存origin/source/extensionId/token guardと属性読取りを保持します。token:stringの投影は直前のtypeof判定後だけです。buildはbundle・module変換を行わずclassic scriptとして `dist/connector-bridge.js` を生成し、manifestとWeb通信契約を維持します。この配布入口だけは `alwaysStrict: false` で既存にないstrict directiveの挿入を防ぎ、ソースのstrict型検査は維持します。宣言したChrome APIは使用範囲だけで、任意応答のschema検証ではありません。
