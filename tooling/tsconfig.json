@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable",
+      "DOM.AsyncIterable"
+    ],
+    "types": [
+      "node"
+    ],
+    "typeRoots": [
+      "../apps/extension/node_modules/@types",
+      "../node_modules/@types"
+    ],
+    "strict": true,
+    "noEmitOnError": true,
+    "declaration": true,
+    "sourceMap": false,
+    "rootDir": "src",
+    "outDir": ".",
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/**/*.mts"
+  ],
+  "exclude": []
+}

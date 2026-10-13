@@ -9,7 +9,9 @@
     "test": "node --test test/*.test.mts",
     "check": "npm run typecheck && npm run build && npm test",
     "pretest": "node ../../tooling/prepare-build-assets.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:tooling": "tsc --project ../../tooling/tsconfig.json",
+    "typecheck:tooling": "tsc --project ../../tooling/tsconfig.json --noEmit"
   },
   "dependencies": {
     "jsqr": "^1.4.0",
