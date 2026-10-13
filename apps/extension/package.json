@@ -11,7 +11,8 @@
     "pretest": "node ../../tooling/prepare-build-assets.mjs",
     "typecheck": "tsc --noEmit",
     "build:tooling": "node ../../tooling/build-tooling.mts",
-    "typecheck:tooling": "node ../../tooling/build-tooling.mts --noEmit"
+    "typecheck:tooling": "node ../../tooling/build-tooling.mts --noEmit",
+    "typecheck:tooling-tests": "tsc --project ../../tooling/tsconfig.test.json --noEmit"
   },
   "dependencies": {
     "jsqr": "^1.4.0",
