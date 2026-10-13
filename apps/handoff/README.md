@@ -35,4 +35,4 @@ npm run deploy:production
 
 開いたWeb受信箱にはDurable Object WebSocketで新着が届きます。タブを閉じた状態でも届くWeb Pushは、VAPID鍵をCloudflare secretとして登録してから追加します。秘密鍵やトークンはGitへ入れません。
 
-Web通知状態の編集元は [web/README.md](web/README.md) のTypeScriptです。`npm run build:web` はstrict型検査後に `public/notification-state.js` を生成し、型エラー時はemitしません。test前とWranglerのcustom buildからも呼びます。既存の配布URL・状態判定・public assetsを保持し、残るapp/service-workerの移行とは分けて扱います。custom buildの設定は [Cloudflare公式仕様](https://developers.cloudflare.com/workers/wrangler/configuration/#custom-builds) と使用中のWrangler schemaで確認しています。
+Webの編集元は [web/README.md](web/README.md) のTypeScriptです。`notification-state.ts`・`app.ts`・`service-worker.ts` を編集し、`npm run build:web` はstrict型検査後に同名の `public/*.js` を生成します。型エラー時は該当projectのemitを拒否します。test前とWranglerのcustom buildからも呼びます。配布JSは生成物として扱い、既存の配布URL・表示・操作・状態判定・public assetsを保持します。custom buildの設定は [Cloudflare公式仕様](https://developers.cloudflare.com/workers/wrangler/configuration/#custom-builds) と使用中のWrangler schemaで確認しています。

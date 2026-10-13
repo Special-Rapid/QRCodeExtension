@@ -8,7 +8,7 @@
 
 本コマンド開始時のWeb型エラーは、`deploy:production` のlocal buildでDB migrationとWorker deployに到達する前に拒否します。固定checkout内でbuild→既存migration→既存deployの順を守る前提であり、DBと公開を跨ぐACIDやremote失敗時のrollbackを追加したものではありません。
 
-`service-worker.ts` は `tsconfig.worker.json` のWebWorker型・strict検査で同じ `public/service-worker.js` に生成します。classic script形式を保つためmoduleや新しいstrict directiveを出力しません。配布URL・登録手順は保持します。両生成物をtest前・Wrangler build・CI同期確認の対象にします。
+`service-worker.ts` は `tsconfig.worker.json` のWebWorker型・strict検査で同じ `public/service-worker.js` に生成します。classic script形式を保つためmoduleや新しいstrict directiveを出力しません。配布URL・登録手順は保持します。3つの生成物をtest前・Wrangler build・CI同期確認の対象にします。
 
 ACK Cacheはpair codeとevent IDを保存する再試行記録の正本です。読み取り本文・URLは保存しません。送信成功時に削除し、失敗時はSyncまたは受信箱起動の再試行へ残します。既存キーの置換、server側event IDの冪等性、通知クリック時のsame-origin認証取得とHTTP(S)限定を保持します。未検証JSONのpropertyと標準API引数への型投影は既存coercionを記述するだけで、新規検証や跨storeのACIDを主張しません。
 
