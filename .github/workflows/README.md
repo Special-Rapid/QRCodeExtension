@@ -1,0 +1,11 @@
+# CIとCodeQL
+
+`verify.yml` はlock済み依存、画像入力、全app検査と生成物同期を確認する。`codeql.yml` の変更も全app検査の対象にする。
+
+`codeql.yml` はmainへのpush、main向けPR、週次、手動起動でActions・JavaScript/TypeScript・Java/Kotlin・Swiftを解析する。ActionsとJS/TSはLinuxでbuildなし、KotlinはLinuxでAndroid appのdebug compile、SwiftはmacOSでPodsを準備してSimulator向けに署名なしでbuildする。Expoのlocal moduleを解析するため、このjob内ではprecompiled modulesを無効にする。SDK世代、配布、DB、本番サービスの設定は変更しない。
+
+各jobのGitHub組込みToken権限はsource読取りとSecurity結果登録だけに限定する。checkoutは認証を残さない。新secret・署名key・EAS/Store資格情報は不要。native jobはcache済みcompileを解析結果と誤認しないよう、compile cacheを使わない。
+
+PRではDefaultを維持するためCode scanningへのuploadを止め、各言語の解析結果SARIFを7日間artifactに保存する。各言語jobとartifact保存を確認し、nativeは全tracked Swift/Kotlinがsource archiveに含まれることも確認する。archive包含は補助証拠であり、実際の抽出診断と解析範囲を別途確認する。未抽出source、build失敗、SARIFなしを解析成功として扱わない。
+
+採用は二段階に分ける。まずDraft PRのheadを固定し、Defaultを維持したまま4言語job・SARIF artifact・実source解析範囲を確認する。この段階ではCode scanningへのnative結果登録は未受入である。次に対象headのmain採用が承認された段階でDefaultからAdvancedへ切り替え、mainへのpushと手動確認で各言語uploadを読み戻す。main・週次での継続解析と登録成功は採用後の受入であり、PR成功だけで完了としない。切替を先行して既存解析を止めたり、両方式を二重実行したりしない。required rulesetはこのworkflowから変更しない。macOSを含むnative jobは実行時間とActions利用量が増えるため、実測のrunを確認する。

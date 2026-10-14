@@ -1,0 +1,139 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '17 18 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            runner: ubuntu-24.04
+            build-mode: none
+          - language: javascript-typescript
+            runner: ubuntu-24.04
+            build-mode: none
+          - language: java-kotlin
+            runner: ubuntu-24.04
+            build-mode: manual
+          - language: swift
+            runner: macos-26
+            build-mode: manual
+    env:
+      EXPO_USE_PRECOMPILED_MODULES: '0'
+    steps:
+      - name: ソースを取得
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: native依存用Nodeを用意
+        if: matrix.build-mode == 'manual'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: Android用JDKを用意
+        if: matrix.language == 'java-kotlin'
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: lock済みnative依存と画像を用意
+        if: matrix.build-mode == 'manual'
+        run: |
+          npm ci
+          npm --prefix apps/mobile ci
+
+      - name: Pods依存を用意
+        if: matrix.language == 'swift'
+        working-directory: apps/mobile/ios
+        run: pod install --deployment
+
+      - name: CodeQLを初期化
+        uses: github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d # v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          db-location: ${{ runner.temp }}/qr-codeql-databases
+
+      - name: Androidの管理Kotlinをcompile
+        if: matrix.language == 'java-kotlin'
+        working-directory: apps/mobile/android
+        run: ./gradlew :app:compileDebugKotlin --no-daemon --no-build-cache --rerun-tasks
+
+      - name: iOSの管理Swiftを署名不要でbuild
+        if: matrix.language == 'swift'
+        working-directory: apps/mobile/ios
+        run: >-
+          xcodebuild -workspace QRScan.xcworkspace -scheme QRScan
+          -configuration Debug -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+          COMPILATION_CACHE_ENABLE_CACHING=NO SWIFT_ENABLE_COMPILE_CACHE=NO
+          SWIFT_USE_INTEGRATED_DRIVER=NO build
+
+      - name: 解析と採用後の結果登録
+        uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4
+        with:
+          category: /language:${{ matrix.language }}
+          output: ${{ runner.temp }}/qr-codeql-results
+          upload: ${{ github.event_name == 'pull_request' && 'never' || 'always' }}
+
+      - name: PRの解析証拠を保存
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: codeql-${{ matrix.language }}-${{ github.sha }}
+          path: ${{ runner.temp }}/qr-codeql-results/*.sarif
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: 全管理nativeソースの抽出を確認
+        if: matrix.build-mode == 'manual'
+        env:
+          CODEQL_LANGUAGE: ${{ matrix.language }}
+          CODEQL_DATABASE_ROOT: ${{ runner.temp }}/qr-codeql-databases
+        run: |
+          python3 - <<'PY'
+          import os
+          import subprocess
+          import zipfile
+          from pathlib import Path
+
+          language = os.environ['CODEQL_LANGUAGE']
+          extension, database = ('.swift', 'swift') if language == 'swift' else ('.kt', 'java')
+          tracked = subprocess.check_output(['git', 'ls-files', 'apps/mobile'], text=True).splitlines()
+          expected = [name for name in tracked if name.endswith(extension)]
+          if not expected:
+              raise SystemExit('管理nativeソースが見つかりません')
+          archive = Path(os.environ['CODEQL_DATABASE_ROOT']) / database / 'src.zip'
+          with zipfile.ZipFile(archive) as source:
+              extracted = [name.replace('\\', '/') for name in source.namelist()]
+          missing = [name for name in expected if not any(path.endswith('/' + name) or path == name for path in extracted)]
+          if missing:
+              raise SystemExit('未抽出の管理ソース: ' + ', '.join(missing))
+          print(f'{language}: 管理ソース{len(expected)}件の抽出を確認')
+          PY
