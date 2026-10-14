@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "None",
+    "moduleResolution": "Node10",
+    "lib": [
+      "ES2022",
+      "WebWorker"
+    ],
+    "types": [],
+    "strict": true,
+    "noEmitOnError": true,
+    "declaration": false,
+    "sourceMap": false,
+    "rootDir": "web",
+    "outDir": "public",
+    "skipLibCheck": true,
+    "alwaysStrict": false
+  },
+  "include": [
+    "web/service-worker.ts"
+  ]
+}

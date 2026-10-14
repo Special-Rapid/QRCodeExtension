@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "files": [
+    "generate-brand-assets.d.mts",
+    "generate-brand-assets.mjs",
+    "prepare-build-assets.d.mts",
+    "prepare-build-assets.mjs",
+    "prepare-native-assets.d.mts",
+    "prepare-native-assets.mjs"
+  ]
+}

@@ -25,7 +25,7 @@ QRコードをカメラなしで読み取るChrome拡張と、スマホで読ん
 | --- | --- |
 | [apps/extension/](apps/extension/README.md) | Manifest V3 Chrome拡張。カメラを使わないQRスキャンと任意の受信箱コネクタ。 |
 | `apps/mobile/` | ExpoベースのiOS／Androidスキャナー。 |
-| `apps/handoff/` | `qr.snkisk.com`向けのCloudflare Worker、D1、Durable Object、PCのWeb受信箱。 |
+| [apps/handoff/](apps/handoff/README.md) | `qr.snkisk.com`向けのCloudflare Worker、D1、Durable Object、PCのWeb受信箱。 |
 
 ## Chrome拡張をローカルで試す
 
@@ -95,3 +95,14 @@ QR_ASSETS_OFFLINE=1 npm run prepare:native-assets
 依存packageのインストール用cacheは別途必要です。cache未準備・破損では安全に停止します。破損したhashファイルは原因確認後に明示的に除去し、オンライン準備をやり直してください。PNG原本は確定URLとhashを更新せず上書きしません。ブランド更新では正本・固定原本・生成recipe・配布物の確認を一緒に行います。
 
 root CI、mobileのnpm postinstall（EAS prebuild前）とstart/android/ios/web/check、EAS post-install、直接Gradle preBuild、Xcodeのresource compile前に準備を接続しています。extension build/testはCDN不要で正本SVGから生成します。`npx expo`を直接実行する場合は先に`npm run prepare:native-assets`を行ってください。cacheと入力を揃えたclean checkoutで、生成のpixel/dimensionsと固定入力の完全hashを確認します。
+
+画像生成・native資産準備のTypeScript編集元と生成MJSの使い分けは [tooling/README.md](tooling/README.md) にまとめます。
+
+
+## 型移行の配布形式と設定例外
+
+自作source・開発script・既存testを型検査する統合候補です。配布JSは [Web編集元](apps/handoff/web/README.md) の3つと [tooling編集元](tooling/README.md) の3つから生成する必要な成果物として追跡します。直接編集せず、各folderのbuildで再生成します。Chrome配布bundleは既存のignored `dist/`へ生成します。
+
+[mobileのESLint設定](apps/mobile/README.md#eslint設定の型検査とjs例外) はExpoの既存検出経路のためJSを残し、strict checkJs/noEmitで検査するplatform例外です。TSへrename済みとは扱いません。vendor・node_modulesはlocked third-party dependencyで、この自作source移行の対象外です。
+
+この統合候補は親Issue #15の元29候補を対象にします。別機能PR #8/#9 の追加source、実端末/Push・SDK/native build・署名APK/key・本番採用は未完のまま区別します。個別Draftや統合ローカル検証をmain公開・release-readyと扱いません。

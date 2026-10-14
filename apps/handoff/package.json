@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "wrangler dev",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --project tsconfig.web.json --noEmit && tsc --project tsconfig.worker.json --noEmit",
+    "build:web": "tsc --project tsconfig.web.json && tsc --project tsconfig.worker.json",
+    "pretest": "npm run build:web",
     "check": "npm run typecheck && npm run test",
     "vapid:generate": "web-push generate-vapid-keys",
     "db:migrate:production": "wrangler d1 migrations apply DB --remote",
-    "deploy:production": "npm run db:migrate:production && wrangler deploy"
+    "deploy:production": "npm run build:web && npm run db:migrate:production && wrangler deploy"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "^1.0.0",

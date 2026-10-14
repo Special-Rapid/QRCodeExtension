@@ -55,7 +55,7 @@ async function importBackground(environment: ChromeEnvironment, suffix: string, 
   (globalThis as unknown as BackgroundGlobals).chrome = environment.chrome;
   (globalThis as unknown as BackgroundGlobals).fetch = environment.fetch;
   if (workerScope) (globalThis as unknown as BackgroundGlobals).self = workerScope; else delete (globalThis as unknown as BackgroundGlobals).self;
-  await import(new URL(`../src/handoff-background.js?background-test=${suffix}`, import.meta.url) as unknown as string);
+  await import(new URL(`../src/handoff-background.mts?background-test=${suffix}`, import.meta.url) as unknown as string);
   return previous;
 }
 
