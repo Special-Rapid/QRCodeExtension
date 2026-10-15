@@ -97,21 +97,12 @@ jobs:
           COMPILATION_CACHE_ENABLE_CACHING=NO SWIFT_ENABLE_COMPILE_CACHE=NO
           SWIFT_USE_INTEGRATED_DRIVER=NO build
 
-      - name: 解析と採用後の結果登録
+      - name: 結果を登録せず解析
         uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4
         with:
           category: /language:${{ matrix.language }}
           output: ${{ runner.temp }}/qr-codeql-results
-          upload: ${{ github.event_name == 'pull_request' && 'never' || 'always' }}
-
-      - name: PRの解析証拠を保存
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: codeql-${{ matrix.language }}-${{ github.sha }}
-          path: ${{ runner.temp }}/qr-codeql-results/*.sarif
-          if-no-files-found: error
-          retention-days: 7
+          upload: never
 
       - name: 全管理nativeソースの抽出を確認
         if: matrix.build-mode == 'manual'
@@ -139,3 +130,19 @@ jobs:
               raise SystemExit('未抽出の管理ソース: ' + ', '.join(missing))
           print(f'{language}: 管理ソース{len(expected)}件の抽出を確認')
           PY
+
+      - name: 検証成功後に採用済みの結果を登録
+        if: github.event_name != 'pull_request'
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4
+        with:
+          sarif_file: ${{ runner.temp }}/qr-codeql-results
+          category: /language:${{ matrix.language }}
+
+      - name: PRの解析証拠を保存
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: codeql-${{ matrix.language }}-${{ github.sha }}
+          path: ${{ runner.temp }}/qr-codeql-results/*.sarif
+          if-no-files-found: error
+          retention-days: 7
