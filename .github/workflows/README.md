@@ -4,6 +4,8 @@
 
 `codeql.yml` はmainへのpush、main向けPR、週次、手動起動でActions・JavaScript/TypeScript・Java/Kotlin・Swiftを解析する。ActionsとJS/TSはLinuxでbuildなし、KotlinはLinuxでAndroid appのdebug compile、SwiftはmacOSでPodsを準備してSimulator向けに署名なしでbuildする。Expoのlocal moduleを解析するため、このjob内ではprecompiled modulesを無効にする。SDK世代、配布、DB、本番サービスの設定は変更しない。
 
+SwiftのPods準備は、固定したnpm依存のlocal Pod定義と解析用のsource build設定に合わせて `pod install` を行う。既存Pods lockに不足するlocal定義をdeploymentモードで拒否して解析を止めない。既存lockの外部Pod制約を使い、`pod update` は実行しない。runner上のlock差分をログへ残し、repositoryのnative source・Podfile・Pods lockは変更しない。これは解析用buildの準備であり、アプリ配布用lockの整合やrelease受入を完了したとは扱わない。
+
 各jobのGitHub組込みToken権限はsource読取りとSecurity結果登録だけに限定する。checkoutは認証を残さない。新secret・署名key・EAS/Store資格情報は不要。native jobはcache済みcompileを解析結果と誤認しないよう、compile cacheを使わない。
 
 PRではDefaultを維持するためCode scanningへのuploadを止め、各言語の解析結果SARIFを7日間artifactに保存する。各言語jobとartifact保存を確認し、nativeは全tracked Swift/Kotlinがsource archiveに含まれることも確認する。archive包含は補助証拠であり、実際の抽出診断と解析範囲を別途確認する。未抽出source、build失敗、SARIFなしを解析成功として扱わない。

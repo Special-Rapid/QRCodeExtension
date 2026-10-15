@@ -70,7 +70,9 @@ jobs:
       - name: Pods依存を用意
         if: matrix.language == 'swift'
         working-directory: apps/mobile/ios
-        run: pod install --deployment
+        run: |
+          pod install
+          git diff -- Podfile.lock
 
       - name: CodeQLを初期化
         uses: github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d # v4
